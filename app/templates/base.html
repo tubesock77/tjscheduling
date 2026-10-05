@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}TJ Scheduling{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="brand"><b>TJ Scheduling</b><span>Trader Joe's deliveries</span></div>
+    {% set ep = request.endpoint %}
+    <nav class="nav">
+      <a href="{{ url_for('main.appointments') }}" class="{{ 'on' if ep in ('main.appointments','main.po_detail') }}">Appointments{% if nav.attention %}<span class="badge">{{ nav.attention }}</span>{% endif %}</a>
+      <a href="{{ url_for('main.documents') }}" class="{{ 'on' if ep == 'main.documents' }}">Documents{% if nav.missing %}<span class="badge">{{ nav.missing }}</span>{% endif %}</a>
+      <a href="{{ url_for('main.locations') }}" class="{{ 'on' if ep == 'main.locations' }}">Locations</a>
+      <a href="{{ url_for('main.settings') }}" class="{{ 'on' if ep == 'main.settings' }}">Settings</a>
+      <a href="{{ url_for('main.activity') }}" class="{{ 'on' if ep == 'main.activity' }}">Activity</a>
+    </nav>
+    <div class="who">{{ user.name if user }} &nbsp;|&nbsp; <a href="{{ url_for('auth.logout') }}">Sign out</a></div>
+  </aside>
+  <main>
+    {% for cat, msg in get_flashed_messages(with_categories=true) %}
+      <div class="flash {{ cat }}">{{ msg }}</div>
+    {% endfor %}
+    {% block body %}{% endblock %}
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Documents | TJ Scheduling{% endblock %}
+{% block body %}
+<div class="pagehead"><div><h1>Documents</h1>
+  <div class="sub">One combined BOL and Bioterrorism form per PO, sent as a reply on that PO's appointment thread.</div></div></div>
+
+<form class="drop" method="post" action="{{ url_for('main.doc_bulk') }}" enctype="multipart/form-data">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <div><b>Send several at once</b><span class="small">Each file name needs its PO number, for example 158142470.pdf</span></div>
+  <div class="row"><label class="btn quiet filepick">Choose PDFs<input type="file" name="pdfs" accept="application/pdf" multiple required onchange="this.form.querySelector('.cnt').textContent = this.files.length + ' selected'"></label>
+  <span class="small cnt"></span><button>Send all</button></div>
+</form>
+
+<div class="tabs">
+  <a href="?show=missing" class="{{ 'on' if show == 'missing' }}">Not sent ({{ counts.missing }})</a>
+  <a href="?show=done" class="{{ 'on' if show == 'done' }}">Sent ({{ counts.done }})</a>
+  <a href="?show=all" class="{{ 'on' if show == 'all' }}">All ({{ counts.all }})</a>
+</div>
+{% if rows %}
+<table class="grid">
+  <tr><th>PO</th><th>Location</th><th>Appointment</th><th>Shipped</th><th>Status</th><th></th></tr>
+  {% for p in rows %}
+  <tr id="po{{ p.id }}">
+    <td><a class="po" href="{{ url_for('main.po_detail', po_id=p.id) }}">{{ p.po_display }}</a><div class="small">{{ p.order_no }}</div></td>
+    <td class="loc"><b>{{ p.dc.name if p.dc else 'Unknown DC' }}</b></td>
+    <td>{% if p.appt_date %}{{ p.appt_date|day }} at {{ p.appt_time }}{% endif %}</td>
+    <td>{{ p.act_ship|day if p.act_ship else '' }}</td>
+    <td>{% if p.doc_status == 'missing' and (p.act_ship or p.state == 'shipped') %}<span class="pill missing">Missing</span><div class="small">Shipped, send now</div>
+        {% elif p.doc_status == 'missing' %}<span class="pill pending">Not shipped yet</span>
+        {% elif p.doc_status == 'failed' %}<span class="pill failed">Not sent</span><div class="err">{{ p.doc_error }}</div>
+        {% elif p.doc_status == 'sent' %}<span class="pill sent">Sent</span><div class="small">{{ p.doc_sent_at|stamp }}</div>
+        {% elif p.doc_status == 'sent_detected' %}<span class="pill sent_detected">Sent from mailbox</span><div class="small">{{ p.doc_sent_at|stamp }}</div>
+        {% else %}<span class="pill sent_manual">Sent outside site</span><div class="small">{{ p.doc_sent_at|stamp }}</div>{% endif %}</td>
+    <td><div class="docacts">
+      {% if p.doc_status in ('missing','failed') %}
+      <form class="inline" method="post" action="{{ url_for('main.doc_upload', po_id=p.id) }}" enctype="multipart/form-data">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+        <label class="btn quiet filepick">Choose PDF<input type="file" name="pdf" accept="application/pdf" required onchange="this.closest('form').requestSubmit()"></label>
+      </form>
+      <form class="inline" method="post" action="{{ url_for('main.doc_manual', po_id=p.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+        <button class="ghost">Sent outside site</button></form>
+      {% elif p.doc_status == 'sent_manual' %}
+      <form class="inline" method="post" action="{{ url_for('main.doc_manual', po_id=p.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="undo" value="1"><input type="hidden" name="next" value="{{ request.full_path }}">
+        <button class="ghost">Undo</button></form>
+      {% endif %}
+    </div></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<div class="empty">{{ 'Every PO has its document. Nothing to send.' if show == 'missing' else 'No POs here yet.' }}</div>{% endif %}
+{% endblock %}

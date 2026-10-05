@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Settings | TJ Scheduling{% endblock %}
+{% block body %}
+<div class="pagehead"><div><h1>Settings</h1><div class="sub">Rules the site follows when it requests and moves appointments.</div></div></div>
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf }}">
+<div class="setgrid">
+<div>
+  <h2>Rescheduling</h2>
+  <div class="set"><label for="lh"><b>Ask to reschedule</b><span>Hours before the appointment, unless you mark it Keep</span></label><input id="lh" type="number" min="24" name="reschedule_lead_hours" value="{{ s.reschedule_lead_hours }}"></div>
+  <div class="set"><label for="na"><b>Alert me if no answer</b><span>Hours before the appointment</span></label><input id="na" type="number" min="1" name="no_answer_alert_hours" value="{{ s.no_answer_alert_hours }}"></div>
+  <div class="set"><label for="gap"><b>Move at least</b><span>Days after the current appointment, on an allowed day</span></label><input id="gap" type="number" min="1" name="reschedule_min_gap_days" value="{{ s.reschedule_min_gap_days }}"></div>
+  <div class="set"><label for="max"><b>Stop after</b><span>Reschedules on one PO, then alert me instead</span></label><input id="max" type="number" min="1" name="reschedule_max_attempts" value="{{ s.reschedule_max_attempts }}"></div>
+  <h2>Appointment requests</h2>
+  <div class="set"><label for="rl"><b>Default requested date</b><span>First allowed day at least this many days out. Temporary until we settle the rule.</span></label><input id="rl" type="number" min="0" name="request_lead_days" value="{{ s.request_lead_days }}"></div>
+  <div class="set"><label for="rt"><b>Default requested time</b><span>24-hour time</span></label><input id="rt" type="text" name="request_default_time" value="{{ s.request_default_time }}"></div>
+  <div class="set"><label for="auto"><b>Send requests automatically</b><span>Off: each request waits for you to click Send</span></label><input id="auto" type="checkbox" name="auto_send_requests" value="1" {{ 'checked' if s.auto_send_requests == '1' }}></div>
+  <div class="set"><label for="rh"><b>Daily reminder email</b><span>Hour of day (0 to 23) for the missing-documents summary</span></label><input id="rh" type="number" min="0" max="23" name="reminder_hour" value="{{ s.reminder_hour }}"></div>
+</div>
+<div>
+  <h2>Request email</h2>
+  <div class="set wide"><label for="v"><b>Vendor description</b></label><input id="v" type="text" name="vendor" value="{{ s.vendor }}"></div>
+  <div class="set wide"><label for="c"><b>Carrier</b></label><input id="c" type="text" name="carrier" value="{{ s.carrier }}"></div>
+  <div class="set wide"><label for="o"><b>Point of origin</b></label><input id="o" type="text" name="origin" value="{{ s.origin }}"></div>
+  <div class="set wide"><label for="ct"><b>Contact</b></label><input id="ct" type="text" name="contact" value="{{ s.contact }}"></div>
+  <label class="field" style="margin-top:12px">Signature<textarea name="signature" rows="3">{{ s.signature }}</textarea></label>
+  <h2>Connections</h2>
+  <div class="conn"><span class="dot {{ 'ok' if status.mail }}"></span><span><b>Microsoft 365 mailbox</b><div class="small">{{ status.mailbox or 'Not set up yet' }}</div></span></div>
+  <div class="conn"><span class="dot {{ 'ok' if status.sheet }}"></span><span><b>Smartsheet</b><div class="small">{{ 'Connected to TRADER JOES' if status.sheet else 'API token not set yet' }}{% if status.last_sync %}, last checked {{ status.last_sync|stamp }}{% endif %}</div></span></div>
+  {% if status.demo %}<p class="small">Demo mode: nothing is actually sent.</p>{% endif %}
+  {% if status.last_error %}<p class="err">Last error: {{ status.last_error }}</p>{% endif %}
+</div>
+</div>
+<p style="margin-top:22px"><button>Save settings</button></p>
+</form>
+{% endblock %}

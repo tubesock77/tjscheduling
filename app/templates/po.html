@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}PO {{ po.po_display }} | TJ Scheduling{% endblock %}
+{% block body %}
+{% set states = {'pending_request':'Ready to request','requested':'Request sent','booked':'Booked','reschedule_requested':'Reschedule asked','shipped':'Shipped','closed':'Not tracked'} %}
+<div class="pagehead">
+  <div><h1>PO {{ po.po_display }}</h1>
+    <div class="sub">{{ po.order_no }} &nbsp;|&nbsp; {{ po.dc.name if po.dc else 'Unknown DC' }} &nbsp;|&nbsp; {{ states[po.state] }}</div></div>
+  <a class="btn quiet" href="{{ url_for('main.appointments') }}">Back to appointments</a>
+</div>
+{% if po.attention %}<div class="flash error"><b>Needs you:</b> {{ po.attention }}</div>{% endif %}
+
+<div class="cols">
+<div>
+  <dl class="facts">
+    <dt>Location</dt><dd>{% if po.dc %}<b>{{ po.dc.name }}</b> ({{ po.dc.city }})<div class="small">BC {{ po.dc.code }}, {{ po.dc.bc_name }}</div>{% else %}DC # {{ po.dc_code or 'missing' }}{% endif %}</dd>
+    <dt>Appointment email</dt><dd>{{ po.dc.email if po.dc else '' }}</dd>
+    <dt>Delivery days</dt><dd>{{ po.dc.days_label if po.dc else '' }}</dd>
+    <dt>Appointment</dt><dd>{% if po.appt_date %}<b>{{ po.appt_date|day }} at {{ po.appt_time }}</b>{% if po.hours is not none %} <span class="small">({{ po.hours|countdown }})</span>{% endif %}{% else %}None yet{% endif %}</dd>
+    <dt>Confirmation #</dt><dd>{{ po.conf_no or '' }}</dd>
+    <dt>Load</dt><dd>{{ po.pallets }} pallets, {{ '{:,}'.format(po.cases) if po.cases }} cases, {{ po.dc.load_type|title if po.dc }}</dd>
+    <dt>Ship date</dt><dd>{{ po.ship_date|day }}{% if po.act_ship %} <span class="small">(shipped {{ po.act_ship|day }})</span>{% endif %}</dd>
+    <dt>Reschedules</dt><dd>{{ po.reschedule_count }} of {{ settings.reschedule_max_attempts }}</dd>
+    <dt>Document</dt><dd>{% if po.doc_status == 'missing' and not (po.act_ship or po.state == 'shipped') %}<span class="pill pending">Not shipped yet</span>{% else %}<span class="pill {{ po.doc_status }}">{{ {'missing':'Missing','sent':'Sent','sent_manual':'Sent outside site','sent_detected':'Sent from mailbox','failed':'Not sent'}[po.doc_status] }}</span>{% endif %} <a href="{{ url_for('main.documents', show='all') }}#po{{ po.id }}">Documents</a></dd>
+  </dl>
+
+  <h2>History</h2>
+  <ul class="timeline">
+    {% for a in activity %}
+    <li><span class="when">{{ a.ts|stamp }}<div class="who">{{ a.actor }}</div></span><span><b>{{ a.action }}</b>{% if a.detail %}<div class="small">{{ a.detail }}</div>{% endif %}</span></li>
+    {% else %}<li><span></span><span class="small">No activity yet.</span></li>{% endfor %}
+  </ul>
+</div>
+
+<div>
+  {% if po.state == 'pending_request' %}
+  <div class="panel"><h3>Send appointment request</h3>
+    <form method="post" action="{{ url_for('main.po_request', po_id=po.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <div class="row"><label class="field">Requested date<input type="date" name="requested_date" value="{{ po.requested_date }}"></label>
+      <label class="field">Time<select name="requested_time">{% for t in time_options %}<option {{ 'selected' if t == (po.requested_time or '08:00') }}>{{ t }}</option>{% endfor %}</select></label>
+      <div class="field"><button>Send request</button></div></div>
+    </form></div>
+  {% endif %}
+
+  {% if po.state in ('booked','reschedule_requested') %}
+  <div class="panel"><h3>Keep this appointment</h3>
+    <p class="small">While kept, the site won't ask the DC to move it.</p>
+    <form method="post" action="{{ url_for('main.po_keep', po_id=po.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="next" value="{{ request.path }}">
+      {% if po.keep %}<input type="hidden" name="keep" value="0"><button class="quiet">Stop keeping</button> <span class="pill kept">Kept</span>
+      {% else %}<input type="hidden" name="keep" value="1"><button>Keep appointment</button>{% endif %}
+    </form></div>
+  {% endif %}
+
+  {% if po.state in ('requested','booked','reschedule_requested') %}
+  <div class="panel"><h3>Enter appointment</h3>
+    <p class="small">Use this when a DC reply couldn't be read or you booked it another way. Smartsheet is updated when you save.</p>
+    <form method="post" action="{{ url_for('main.po_confirm', po_id=po.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <div class="row">
+        <label class="field">Date<input type="date" name="appt_date" value="{{ po.appt_date or po.requested_date or '' }}"></label>
+        <label class="field">Time<select name="appt_time">{% for t in time_options %}<option {{ 'selected' if t == (po.appt_time or '08:00') }}>{{ t }}</option>{% endfor %}</select></label>
+        <label class="field">Conf #<input type="text" name="conf_no" value="{{ po.conf_no or '' }}" size="11"></label>
+        <div class="field"><button>Save appointment</button></div>
+      </div>
+    </form></div>
+  {% endif %}
+
+  {% if po.state == 'booked' %}
+  <div class="panel"><h3>Reschedule now</h3>
+    <p class="small">Replies on the appointment thread asking for the next allowed day at least {{ settings.reschedule_min_gap_days }} days later.</p>
+    <form method="post" action="{{ url_for('main.po_reschedule', po_id=po.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="next" value="{{ request.path }}"><button class="quiet">Ask DC to reschedule</button></form></div>
+  {% endif %}
+
+  {% if po.state not in ('closed',) %}
+  <div class="panel"><h3>Stop tracking</h3>
+    <p class="small">For cancelled POs. The site stops emailing about this PO.</p>
+    <form method="post" action="{{ url_for('main.po_close', po_id=po.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="ghost">Stop tracking this PO</button></form></div>
+  {% endif %}
+</div>
+</div>
+{% endblock %}

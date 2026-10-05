@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Locations | TJ Scheduling{% endblock %}
+{% block body %}
+<div class="pagehead"><div><h1>Locations</h1>
+  <div class="sub">Where each Smartsheet DC # gets emailed, and the days a delivery can be moved to. From TJ's 2026 DC list.</div></div></div>
+<table class="grid">
+  <tr><th>Location</th><th>Delivery days</th><th>Appointment email</th><th>Your DC # codes</th></tr>
+  {% for l in locations %}
+  <tr>
+    <td class="loc"><b>{{ l.name }}</b><div class="small">{{ l.city }}, TJ DC {{ l.tj_dcs }}</div></td>
+    <td><span class="days">{% for d in range(7) %}<span class="{{ 'on' if d in l.days }}">{{ day_names[d][:2] }}</span>{% endfor %}</span></td>
+    <td>{{ l.email }}</td>
+    <td class="codes">{% for c, n in l.codes %}<div>{{ c }} {{ n }}</div>{% else %}None in BC yet{% endfor %}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

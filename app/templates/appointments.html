@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="pagehead">
+  <div><h1>Appointments</h1>
+    <div class="sub">Smartsheet and the mailbox were last checked {{ last_sync|stamp if last_sync else 'never' }}.</div></div>
+  <form method="post" action="{{ url_for('main.sync_now') }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="quiet">Check now</button></form>
+</div>
+
+<h2>Needs you <span class="n">{{ attention|length + unmatched|length }}</span></h2>
+{% if attention or unmatched %}
+<div class="alerts">
+  {% for p in attention %}
+  <div class="alert">
+    <div><a class="po" href="{{ url_for('main.po_detail', po_id=p.id) }}">{{ p.po_display }}</a>
+      <div class="small">{{ p.dc.name if p.dc else 'Unknown DC' }}</div></div>
+    <div><span class="why">{{ p.attention }}</span>
+      {% if p.appt_date %}<div class="small">Current appointment {{ p.appt_date|day }} at {{ p.appt_time }}{% if p.conf_no %}, conf {{ p.conf_no }}{% endif %}</div>{% endif %}</div>
+    <div class="acts">
+      <a class="btn" href="{{ url_for('main.po_detail', po_id=p.id) }}">Open</a>
+      <form method="post" action="{{ url_for('main.po_dismiss', po_id=p.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="ghost">Clear</button></form>
+    </div>
+  </div>
+  {% endfor %}
+  {% for u in unmatched %}
+  <div class="alert">
+    <div><span class="po">No PO</span><div class="small">{{ u.sender }}</div></div>
+    <div><span class="why">Email couldn't be matched to a PO</span><div class="small">{{ u.subject }}</div></div>
+    <div class="acts"><form method="post" action="{{ url_for('main.unmatched_dismiss', uid=u.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="ghost">Clear</button></form></div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">Nothing needs you right now.</div>
+{% endif %}
+
+<h2>Ready to request <span class="n">{{ pending|length }}</span></h2>
+<p class="hint">Rows set to APT. REQ. in Smartsheet. Check the requested date, then send. The email goes to the DC's appointment inbox in your usual table format.</p>
+{% if pending %}
+<table class="grid">
+  <tr><th>PO</th><th>Location</th><th>Type</th><th class="num">Pallets</th><th class="num">Cases</th><th>Ship date</th><th>Requested date</th><th>Time</th><th></th></tr>
+  {% for p in pending %}
+  <tr>
+    <td><a class="po" href="{{ url_for('main.po_detail', po_id=p.id) }}">{{ p.po_display }}</a><div class="small">{{ p.order_no }}</div></td>
+    <td class="loc"><b>{{ p.dc.name }}</b><div class="small">Delivers {{ p.dc.days_label }}</div></td>
+    <td>{{ p.dc.load_type|title }}</td>
+    <td class="num">{{ p.pallets }}</td><td class="num">{{ '{:,}'.format(p.cases) if p.cases }}</td>
+    <td>{{ p.ship_date|day }}</td>
+    <td><input type="date" name="requested_date" value="{{ p.requested_date }}" form="req{{ p.id }}"></td>
+    <td><select name="requested_time" form="req{{ p.id }}">{% for t in time_options %}<option {{ 'selected' if t == (p.requested_time or settings.request_default_time) }}>{{ t }}</option>{% endfor %}</select></td>
+    <td><form id="req{{ p.id }}" method="post" action="{{ url_for('main.po_request', po_id=p.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button>Send request</button></form></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<div class="empty">No rows are set to APT. REQ. in Smartsheet.</div>{% endif %}
+
+<h2>Waiting on the DC <span class="n">{{ waiting|length }}</span></h2>
+{% if waiting %}
+<table class="grid">
+  <tr><th>PO</th><th>Location</th><th>Asked for</th><th>Current appointment</th><th>Sent</th><th>Status</th></tr>
+  {% for p in waiting %}
+  <tr>
+    <td><a class="po" href="{{ url_for('main.po_detail', po_id=p.id) }}">{{ p.po_display }}</a><div class="small">{{ p.order_no }}</div></td>
+    <td class="loc"><b>{{ p.dc.name }}</b><div class="small">{{ p.dc.email }}</div></td>
+    <td>{{ p.requested_date|day }}{% if p.state == 'requested' %} at {{ p.requested_time }}{% endif %}</td>
+    <td>{% if p.appt_date %}{{ p.appt_date|day }} at {{ p.appt_time }}{% else %}<span class="small">None yet</span>{% endif %}</td>
+    <td>{{ p.request_sent_at|stamp }}</td>
+    <td><span class="pill wait">{{ 'Reschedule asked' if p.state == 'reschedule_requested' else 'Request sent' }}</span></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<div class="empty">No requests are waiting on a reply.</div>{% endif %}
+
+<h2>Booked <span class="n">{{ booked|length }}</span></h2>
+<div class="legend"><span><i class="w"></i>Reschedule window ({{ lead }} hrs before)</span><span>Bar shows the next 7 days</span></div>
+{% if booked %}
+<table class="grid">
+  <tr><th>PO</th><th>Location</th><th>Appointment</th><th>Conf #</th><th>Time left</th><th>Moved</th><th>Keep</th></tr>
+  {% for p in booked %}
+  {% set h = p.hours if p.hours is not none else 0 %}
+  <tr>
+    <td><a class="po" href="{{ url_for('main.po_detail', po_id=p.id) }}">{{ p.po_display }}</a><div class="small">{{ p.order_no }}</div></td>
+    <td class="loc"><b>{{ p.dc.name if p.dc else 'Unknown DC' }}</b><div class="small">{{ p.dc.load_type|title if p.dc }}</div></td>
+    <td>{{ p.appt_date|day }} at {{ p.appt_time }}</td>
+    <td>{{ p.conf_no or '' }}</td>
+    <td><div class="clock">
+      <div class="track" title="{{ p.hours|countdown }} until the appointment">
+        <div class="window" style="width: {{ [lead, 168]|min }}px"></div>
+        {% for d in range(1, 7) %}<div class="tick" style="left: {{ d * 24 }}px"></div>{% endfor %}
+        <div class="mark {{ 'kept' if p.keep }}" style="left: {{ [[h, 0]|max, 168]|min }}px"></div>
+      </div>
+      <span class="t {{ 'hot' if 0 < h <= lead and not p.keep }}">{{ p.hours|countdown }}</span>
+    </div></td>
+    <td>{{ p.reschedule_count }} of {{ settings.reschedule_max_attempts }}</td>
+    <td>
+      <form method="post" action="{{ url_for('main.po_keep', po_id=p.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+      {% if p.keep %}<input type="hidden" name="keep" value="0"><button class="quiet" title="Let the site reschedule this one again">Kept</button>
+      {% else %}<input type="hidden" name="keep" value="1"><button>Keep</button>{% endif %}
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}<div class="empty">No booked appointments yet.</div>{% endif %}
+{% endblock %}

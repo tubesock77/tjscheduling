@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Activity | TJ Scheduling{% endblock %}
+{% block body %}
+<div class="pagehead"><div><h1>Activity</h1><div class="sub">Everything the site and you have done, newest first.</div></div></div>
+<table class="grid">
+  <tr><th>When</th><th>Who</th><th>PO</th><th>What happened</th></tr>
+  {% for a in rows %}
+  <tr><td>{{ a.ts|stamp }}</td><td>{{ a.actor }}</td>
+    <td>{% if a.po_id %}<a class="po" href="{{ url_for('main.po_detail', po_id=a.po_id) }}">{{ display_po(a.po_number) }}</a>{% endif %}</td>
+    <td><b>{{ a.action }}</b>{% if a.detail %}<div class="small">{{ a.detail }}</div>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="4" class="empty">No activity yet.</td></tr>{% endfor %}
+</table>
+{% endblock %}
