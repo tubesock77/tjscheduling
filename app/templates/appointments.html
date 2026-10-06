@@ -38,7 +38,8 @@
     <td>{% if p.appt_date %}{{ p.appt_date|day }} at {{ p.appt_time }}{% else %}<span class="small">None yet</span>{% endif %}</td>
     <td>{% if i.kind == 'Reschedule' %}
       <form class="inline" method="post" action="{{ url_for('main.po_override', po_id=p.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}">
-        <input type="date" name="new_date" value="{{ i.new_date }}"><button class="ghost">Save</button></form>
+        <input type="date" name="new_date" value="{{ i.new_date }}" class="datewarn"
+          data-days="{{ i.dc.days|join(',') if i.dc }}" data-loc="{{ i.dc.name if i.dc }}"><button class="ghost">Save</button><div class="warn"></div></form>
       {% else %}{{ i.new_date|day }}{% endif %}</td>
     <td><div class="docacts">
       {% if i.kind == 'Reschedule' %}
@@ -108,7 +109,8 @@
     <td>{{ p.dc.load_type|title }}</td>
     <td class="num">{{ p.pallets }}</td><td class="num">{{ '{:,}'.format(p.cases) if p.cases }}</td>
     <td>{{ p.earliest|day }}<div class="small">{{ p.dc.transit }}-day transit{% if p.dc.transit_estimated %} (est.){% endif %}</div></td>
-    <td><input type="date" name="requested_date" min="{{ p.earliest }}" value="{{ p.requested_date }}" form="req{{ p.id }}"></td>
+    <td><input type="date" name="requested_date" value="{{ p.requested_date }}" form="req{{ p.id }}" class="datewarn"
+          data-earliest="{{ p.earliest }}" data-days="{{ p.dc.days|join(',') }}" data-loc="{{ p.dc.name }}"><div class="warn"></div></td>
     <td><select name="requested_time" form="req{{ p.id }}">{% for t in time_options %}<option {{ 'selected' if t == (p.requested_time or settings.request_default_time) }}>{{ t }}</option>{% endfor %}</select></td>
     <td><form id="req{{ p.id }}" method="post" action="{{ url_for('main.po_request', po_id=p.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button>Send request</button></form></td>
   </tr>
@@ -166,4 +168,24 @@
   {% endfor %}
 </table>
 {% else %}<div class="empty">No appointments set yet.</div>{% endif %}
+<script>
+(function () {
+  var names = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  function check(el) {
+    var out = el.parentNode.querySelector('.warn'), msg = [];
+    if (!out) return;
+    if (!el.value) { out.textContent = ''; return; }
+    var d = new Date(el.value + 'T12:00:00');
+    var py = (d.getDay() + 6) % 7;  // Monday = 0, like the site
+    var days = (el.dataset.days || '').split(',').filter(Boolean).map(Number);
+    if (days.length && days.indexOf(py) === -1) msg.push((el.dataset.loc || 'This DC') + " doesn't usually take deliveries on " + names[d.getDay()] + 's');
+    if (el.dataset.earliest && el.value < el.dataset.earliest) msg.push('Earlier than the truck can arrive');
+    out.textContent = msg.join('. ');
+  }
+  document.querySelectorAll('.datewarn').forEach(function (el) {
+    el.addEventListener('change', function () { check(el); });
+    check(el);
+  });
+})();
+</script>
 {% endblock %}
