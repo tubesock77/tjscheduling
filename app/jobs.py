@@ -111,6 +111,12 @@ def sync_smartsheet():
     return added
 
 
+def earliest_for(po, dc):
+    """Soonest the truck could reach this DC."""
+    ship = date.fromisoformat(po["ship_date"]) if po["ship_date"] else None
+    return rules.earliest_arrival(now().date(), ship, int(db.settings()["ship_prep_days"]), dc["transit"])
+
+
 def prepare_request(po_id):
     """Fill default requested date/time and flag missing DC info."""
     po = _po(po_id)
@@ -122,7 +128,7 @@ def prepare_request(po_id):
         return
     s = db.settings()
     if not po["requested_date"]:
-        d = rules.default_request_date(now().date(), dc["days"], int(s["request_lead_days"]))
+        d = rules.default_request_date(earliest_for(po, dc), dc["days"])
         db.update_po(po_id, requested_date=d.isoformat(), requested_time=s["request_default_time"])
     if s["auto_send_requests"] == "1":
         hold = int(s["request_hold_minutes"])
@@ -202,7 +208,7 @@ def confirm_appointment(po_id, appt_date, appt_time, conf_no, actor="Cody"):
     changed = po["appt_date"] is not None and po["appt_date"] != appt_date
     db.update_po(po_id, appt_date=appt_date, appt_time=appt_time, conf_no=conf_no,
                  state="booked", attention=None, no_answer_alerted=0)
-    db.log(po_id, "Appointment rescheduled" if changed else "Appointment booked",
+    db.log(po_id, "Appointment rescheduled" if changed else "Appointment set",
            f"{appt_date} {appt_time}" + (f", conf {conf_no}" if conf_no else ""), actor)
     write_back(po_id)
 
@@ -211,12 +217,13 @@ def write_back(po_id):
     po = _po(po_id)
     if not po["sheet_row_id"]:
         return
-    values = {"APT DATE": po["appt_date"], "APT TIME": po["appt_time"], "STATUS": "BOOKED"}
+    status = db.settings().get("appointed_status") or "APPOINT"
+    values = {"APT DATE": po["appt_date"], "APT TIME": po["appt_time"], "STATUS": status}
     if po["conf_no"]:
         values["CONF#"] = po["conf_no"]
     try:
         Services.sheet.update_row(po["sheet_row_id"], values)
-        db.log(po_id, "Smartsheet updated", "APT DATE, APT TIME, CONF#, STATUS = BOOKED")
+        db.log(po_id, "Smartsheet updated", f"APT DATE, APT TIME, CONF#, STATUS = {status}")
     except Exception as e:  # keep going; show it to Cody
         db.update_po(po_id, attention=f"Couldn't update Smartsheet: {e}")
 
@@ -272,7 +279,8 @@ def send_due_requests():
 def _proposed_date(po, dc, gap):
     if po["reschedule_override"]:
         return po["reschedule_override"]
-    return rules.reschedule_target(date.fromisoformat(po["appt_date"]), dc["days"], gap).isoformat()
+    return rules.reschedule_target(date.fromisoformat(po["appt_date"]), dc["days"], gap,
+                                   earliest_for(po, dc)).isoformat()
 
 
 def upcoming():

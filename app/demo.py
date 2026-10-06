@@ -57,7 +57,7 @@ def seed():
         if state in ("requested", "booked", "reschedule_requested", "shipped"):
             db.log(pid, "Appointment request sent", "To the DC appointment inbox")
         if ad and state != "requested":
-            db.log(pid, "Appointment booked", f"{ad} {at}, conf {conf}")
+            db.log(pid, "Appointment set", f"{ad} {at}, conf {conf}")
         if state == "reschedule_requested":
             db.log(pid, "Reschedule requested", f"Asked to move {ad} to {extra['requested_date']}")
         if extra.get("keep"):

@@ -14,30 +14,30 @@ MON, TUE, WED, THU, FRI = 0, 1, 2, 3, 4
 
 LOCATIONS = {
     # Mixing centers
-    "kentucky_mc":   {"name": "Kentucky Mixing Center",   "tj_dcs": "6450", "city": "Franklin, KY",       "email": "Kentucky_PCC_Vendor_Appointments@wcdinc.net",             "days": [MON, THU]},
-    "virginia_mc":   {"name": "Virginia Mixing Center",   "tj_dcs": "6700", "city": "Ruther Glen, VA",    "email": "Virginia_MixingCenter_Vendor_Appointments@wcdinc.net",   "days": [MON, THU, FRI]},
-    "palmdale_mc":   {"name": "Palmdale Mixing Center",   "tj_dcs": "6020", "city": "Palmdale, CA",       "email": "Palmdale_MixingCenter_Vendor_Appointments@wcdinc.net",   "days": [TUE, WED, THU, FRI]},
-    "stockton_mc":   {"name": "Stockton Mixing Center",   "tj_dcs": "6050", "city": "Stockton, CA",       "email": "Stockton_MixingCenter_Vendor_Appointments@wcdinc.net",   "days": [TUE, WED, THU, FRI]},
-    "sacramento_mc": {"name": "Sacramento Mixing Center", "tj_dcs": "6070", "city": "Rancho Cordova, CA", "email": "Sacramento_MixingCenter_Vendor_Appointments@wcdinc.net", "days": [TUE, WED, THU, FRI]},
-    "allentown_mc":  {"name": "Allentown Mixing Center",  "tj_dcs": "6500", "city": "Nazareth, PA",       "email": "Allentown_MixingCenter_Vendor_Appointments@wcdinc.net",  "days": [MON, THU, FRI]},
+    "kentucky_mc":   {"name": "Kentucky Mixing Center",   "tj_dcs": "6450", "city": "Franklin, KY",       "email": "Kentucky_PCC_Vendor_Appointments@wcdinc.net",             "days": [MON, THU], "transit": 4},
+    "virginia_mc":   {"name": "Virginia Mixing Center",   "tj_dcs": "6700", "city": "Ruther Glen, VA",    "email": "Virginia_MixingCenter_Vendor_Appointments@wcdinc.net",   "days": [MON, THU, FRI], "transit": 5},
+    "palmdale_mc":   {"name": "Palmdale Mixing Center",   "tj_dcs": "6020", "city": "Palmdale, CA",       "email": "Palmdale_MixingCenter_Vendor_Appointments@wcdinc.net",   "days": [TUE, WED, THU, FRI], "transit": 2},
+    "stockton_mc":   {"name": "Stockton Mixing Center",   "tj_dcs": "6050", "city": "Stockton, CA",       "email": "Stockton_MixingCenter_Vendor_Appointments@wcdinc.net",   "days": [TUE, WED, THU, FRI], "transit": 2},
+    "sacramento_mc": {"name": "Sacramento Mixing Center", "tj_dcs": "6070", "city": "Rancho Cordova, CA", "email": "Sacramento_MixingCenter_Vendor_Appointments@wcdinc.net", "days": [TUE, WED, THU, FRI], "transit": 2},
+    "allentown_mc":  {"name": "Allentown Mixing Center",  "tj_dcs": "6500", "city": "Nazareth, PA",       "email": "Allentown_MixingCenter_Vendor_Appointments@wcdinc.net",  "days": [MON, THU, FRI], "transit": 5},
     # Regular DCs (dry / cooler / temp control share email + days)
-    "allentown":  {"name": "Allentown",  "tj_dcs": "5503 / 5504 / 5507", "city": "Nazareth, PA",       "email": "allentown_vendor_appointments@wcdinc.net",  "days": [MON, THU, FRI]},
-    "virginia":   {"name": "Virginia",   "tj_dcs": "5703 / 5704 / 5707", "city": "Ruther Glen, VA",    "email": "caroline_vendor_appointments@wcdinc.net",   "days": [MON, THU, FRI]},
-    "minooka":    {"name": "Minooka",    "tj_dcs": "5353 / 5354 / 5357", "city": "Minooka, IL",        "email": "minooka_vendor_appointments@wcdinc.net",    "days": [MON, WED, THU, FRI]},
-    "fontana":    {"name": "Fontana",    "tj_dcs": "5003 / 5004 / 5007", "city": "Fontana, CA",        "email": "Fontana_Vendor_Appointments@wcdinc.net",    "days": [TUE, WED, THU, FRI]},
-    "chino":      {"name": "Chino",      "tj_dcs": "5043",               "city": "Chino, CA",          "email": "Chino_Vendor_Appointments@wcdinc.net",      "days": [TUE, WED, THU, FRI]},
-    "stockton":   {"name": "Stockton",   "tj_dcs": "5053 / 5054 / 5057", "city": "Stockton, CA",       "email": "Stockton_Vendor_Appointments@wcdinc.net",   "days": [TUE, WED, THU, FRI]},
-    "lacey":      {"name": "Lacey",      "tj_dcs": "5103 / 5104 / 5107", "city": "Lacey, WA",          "email": "Lacey_Vendor_Appointments@wcdinc.net",      "days": [MON, WED, THU, FRI]},
-    "irving":     {"name": "Irving",     "tj_dcs": "5303 / 5304 / 5307", "city": "Irving, TX",         "email": "Irving_Vendor_Appointments@wcdinc.net",     "days": [MON, WED, THU, FRI]},
-    "daytona":    {"name": "Daytona",    "tj_dcs": "5653 / 5654 / 5657", "city": "Daytona Beach, FL",  "email": "Daytona_vendor_appointments@wcdinc.net",    "days": [MON, FRI]},
-    "hartford":   {"name": "Hartford",   "tj_dcs": "5523 / 5524 / 5527", "city": "Bloomfield, CT",     "email": "hartford_vendor_appointments@wcdinc.net",   "days": [MON, FRI]},
-    "redlands":   {"name": "Redlands",   "tj_dcs": "5013",               "city": "San Bernardino, CA", "email": "redlands_vendor_appointments@wcdinc.net",   "days": [TUE, WED, THU, FRI]},
-    "kentucky":   {"name": "Kentucky",   "tj_dcs": "5453 / 5454 / 5457", "city": "Franklin, KY",       "email": "Kentucky_Vendor_Appointments@wcdinc.net",   "days": [MON, THU, FRI]},
-    "arizona":    {"name": "Arizona",    "tj_dcs": "5163 / 5164 / 5167", "city": "Peoria, AZ",         "email": "Arizona_Vendor_Appointments@wcdinc.net",    "days": [TUE, WED, THU, FRI]},
-    "palmdale":   {"name": "Palmdale",   "tj_dcs": "5023 / 5024 / 5027", "city": "Palmdale, CA",       "email": "Palmdale_Vendor_Appointments@wcdinc.net",   "days": [TUE, WED, THU, FRI]},
-    "new_york":   {"name": "New York",   "tj_dcs": "5533 / 5534 / 5537", "city": "Islandia, NY",       "email": "NewYork_Vendor_Appointments@wcdinc.net",    "days": [MON, FRI]},
-    "sacramento": {"name": "Sacramento", "tj_dcs": "5073 / 5074 / 5077", "city": "Rancho Cordova, CA", "email": "sacramento_vendor_appointments@wcdinc.net", "days": [TUE, WED, THU, FRI]},
-    "colorado":   {"name": "Colorado",   "tj_dcs": "5203 / 5204 / 5207", "city": "Brighton, CO",       "email": "colorado_vendor_appointments@wcdinc.net",   "days": [TUE, WED, THU, FRI]},
+    "allentown":  {"name": "Allentown",  "tj_dcs": "5503 / 5504 / 5507", "city": "Nazareth, PA",       "email": "allentown_vendor_appointments@wcdinc.net",  "days": [MON, THU, FRI], "transit": 5},
+    "virginia":   {"name": "Virginia",   "tj_dcs": "5703 / 5704 / 5707", "city": "Ruther Glen, VA",    "email": "caroline_vendor_appointments@wcdinc.net",   "days": [MON, THU, FRI], "transit": 5},
+    "minooka":    {"name": "Minooka",    "tj_dcs": "5353 / 5354 / 5357", "city": "Minooka, IL",        "email": "minooka_vendor_appointments@wcdinc.net",    "days": [MON, WED, THU, FRI], "transit": 3},
+    "fontana":    {"name": "Fontana",    "tj_dcs": "5003 / 5004 / 5007", "city": "Fontana, CA",        "email": "Fontana_Vendor_Appointments@wcdinc.net",    "days": [TUE, WED, THU, FRI], "transit": 2},
+    "chino":      {"name": "Chino",      "tj_dcs": "5043",               "city": "Chino, CA",          "email": "Chino_Vendor_Appointments@wcdinc.net",      "days": [TUE, WED, THU, FRI], "transit": 2},
+    "stockton":   {"name": "Stockton",   "tj_dcs": "5053 / 5054 / 5057", "city": "Stockton, CA",       "email": "Stockton_Vendor_Appointments@wcdinc.net",   "days": [TUE, WED, THU, FRI], "transit": 2},
+    "lacey":      {"name": "Lacey",      "tj_dcs": "5103 / 5104 / 5107", "city": "Lacey, WA",          "email": "Lacey_Vendor_Appointments@wcdinc.net",      "days": [MON, WED, THU, FRI], "transit": 2},
+    "irving":     {"name": "Irving",     "tj_dcs": "5303 / 5304 / 5307", "city": "Irving, TX",         "email": "Irving_Vendor_Appointments@wcdinc.net",     "days": [MON, WED, THU, FRI], "transit": 3},
+    "daytona":    {"name": "Daytona",    "tj_dcs": "5653 / 5654 / 5657", "city": "Daytona Beach, FL",  "email": "Daytona_vendor_appointments@wcdinc.net",    "days": [MON, FRI], "transit": 5},
+    "hartford":   {"name": "Hartford",   "tj_dcs": "5523 / 5524 / 5527", "city": "Bloomfield, CT",     "email": "hartford_vendor_appointments@wcdinc.net",   "days": [MON, FRI], "transit": 5},
+    "redlands":   {"name": "Redlands",   "tj_dcs": "5013",               "city": "San Bernardino, CA", "email": "redlands_vendor_appointments@wcdinc.net",   "days": [TUE, WED, THU, FRI], "transit": 2},
+    "kentucky":   {"name": "Kentucky",   "tj_dcs": "5453 / 5454 / 5457", "city": "Franklin, KY",       "email": "Kentucky_Vendor_Appointments@wcdinc.net",   "days": [MON, THU, FRI], "transit": 4},
+    "arizona":    {"name": "Arizona",    "tj_dcs": "5163 / 5164 / 5167", "city": "Peoria, AZ",         "email": "Arizona_Vendor_Appointments@wcdinc.net",    "days": [TUE, WED, THU, FRI], "transit": 2},
+    "palmdale":   {"name": "Palmdale",   "tj_dcs": "5023 / 5024 / 5027", "city": "Palmdale, CA",       "email": "Palmdale_Vendor_Appointments@wcdinc.net",   "days": [TUE, WED, THU, FRI], "transit": 2},
+    "new_york":   {"name": "New York",   "tj_dcs": "5533 / 5534 / 5537", "city": "Islandia, NY",       "email": "NewYork_Vendor_Appointments@wcdinc.net",    "days": [MON, FRI], "transit": 5},
+    "sacramento": {"name": "Sacramento", "tj_dcs": "5073 / 5074 / 5077", "city": "Rancho Cordova, CA", "email": "sacramento_vendor_appointments@wcdinc.net", "days": [TUE, WED, THU, FRI], "transit": 2},
+    "colorado":   {"name": "Colorado",   "tj_dcs": "5203 / 5204 / 5207", "city": "Brighton, CO",       "email": "colorado_vendor_appointments@wcdinc.net",   "days": [TUE, WED, THU, FRI], "transit": 2},
 }
 
 # BC Destination No. -> (location key, BC name, value for the DRY/COOLER column)
@@ -70,6 +70,10 @@ BC_CODES = {
     "6879": ("allentown_mc", "Nazareth Mixing Center",        "DRY"),
 }
 
+# Transit days from Salt Lake City. Daytona (5) is from Cody; the rest are rough
+# mileage estimates until confirmed on the Locations page.
+CONFIRMED_TRANSIT = {"daytona"}
+
 DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
@@ -92,10 +96,14 @@ def location(key):
     """Location with any edits made on the site applied."""
     loc = dict(LOCATIONS[key])
     try:
-        o = _db().one("SELECT days, email FROM location_overrides WHERE key = ?", (key,))
+        o = _db().one("SELECT days, email, transit FROM location_overrides WHERE key = ?", (key,))
     except Exception:
         o = None
+    loc["transit_estimated"] = key not in CONFIRMED_TRANSIT
     if o:
+        if o["transit"] is not None:
+            loc["transit"] = int(o["transit"])
+            loc["transit_estimated"] = False
         if o["days"] is not None:
             loc["days"] = [int(d) for d in o["days"].split(",") if d != ""]
         if o["email"]:
@@ -138,6 +146,8 @@ def resolve(dc_code):
         "email": loc["email"],
         "days": loc["days"],
         "days_label": "/".join(DAY_NAMES[d] for d in loc["days"]),
+        "transit": loc["transit"],
+        "transit_estimated": loc["transit_estimated"],
     }
 
 

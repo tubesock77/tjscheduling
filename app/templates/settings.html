@@ -18,12 +18,14 @@
   <div class="set"><label for="gap"><b>Move at least</b><span>Days after the current appointment, on an allowed day</span></label><input id="gap" type="number" min="1" name="reschedule_min_gap_days" value="{{ s.reschedule_min_gap_days }}"></div>
   <div class="set"><label for="max"><b>Stop after</b><span>Reschedules on one PO, then alert me instead</span></label><input id="max" type="number" min="1" name="reschedule_max_attempts" value="{{ s.reschedule_max_attempts }}"></div>
   <h2>Appointment requests</h2>
-  <div class="set"><label for="rl"><b>Default requested date</b><span>First allowed day at least this many days out. Temporary until we settle the rule.</span></label><input id="rl" type="number" min="0" name="request_lead_days" value="{{ s.request_lead_days }}"></div>
+  <div class="set"><label for="sp"><b>Days before a load can ship</b><span>Added before transit. The requested date is the first delivery day the truck can make.</span></label><input id="sp" type="number" min="0" name="ship_prep_days" value="{{ s.ship_prep_days }}"></div>
   <div class="set"><label for="rt"><b>Default requested time</b><span>24-hour time</span></label><input id="rt" type="text" name="request_default_time" value="{{ s.request_default_time }}"></div>
   <div class="set"><label for="auto"><b>Send requests automatically</b><span>Off: each request waits for you to click Send</span></label><input id="auto" type="checkbox" name="auto_send_requests" value="1" {{ 'checked' if s.auto_send_requests == '1' }}></div>
   <div class="set"><label for="rh"><b>Daily reminder email</b><span>Hour of day (0 to 23) for the missing-documents summary</span></label><input id="rh" type="number" min="0" max="23" name="reminder_hour" value="{{ s.reminder_hour }}"></div>
 </div>
 <div>
+  <h2>Smartsheet</h2>
+  <div class="set wide"><label for="as"><b>Status when appointed</b><span>Written to STATUS once an appointment is set. Must match your dropdown exactly.</span></label><input id="as" type="text" name="appointed_status" value="{{ s.appointed_status }}"></div>
   <h2>Request email</h2>
   <div class="set wide"><label for="v"><b>Vendor description</b></label><input id="v" type="text" name="vendor" value="{{ s.vendor }}"></div>
   <div class="set wide"><label for="c"><b>Carrier</b></label><input id="c" type="text" name="carrier" value="{{ s.carrier }}"></div>

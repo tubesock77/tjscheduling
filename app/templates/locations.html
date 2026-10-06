@@ -2,7 +2,7 @@
 {% block title %}Locations | TJ Scheduling{% endblock %}
 {% block body %}
 <div class="pagehead"><div><h1>Locations</h1>
-  <div class="sub">Where each Smartsheet DC # gets emailed, and the days a delivery can be moved to. Starts from TJ's 2026 DC list.</div></div></div>
+  <div class="sub">Where each Smartsheet DC # gets emailed, and the days a delivery can be moved to. Starts from TJ's 2026 DC list. Transit is days by truck from Salt Lake City; estimates are marked until you confirm them.</div></div></div>
 
 <form class="addcode" method="post" action="{{ url_for('main.code_add') }}">
   <input type="hidden" name="csrf" value="{{ csrf }}">
@@ -17,15 +17,16 @@
 </form>
 
 <table class="grid">
-  <tr><th>Location</th><th>Delivery days</th><th>Appointment email</th><th>Your DC # codes</th><th></th></tr>
+  <tr><th>Location</th><th>Delivery days</th><th>Transit</th><th>Appointment email</th><th>Your DC # codes</th><th></th></tr>
   {% for l in locations %}
   {% if edit == l.key %}
   <tr class="editing">
     <td class="loc"><b>{{ l.name }}</b><div class="small">{{ l.city }}, TJ DC {{ l.tj_dcs }}</div></td>
-    <td colspan="2">
+    <td colspan="3">
       <form id="loc-{{ l.key }}" method="post" action="{{ url_for('main.location_save', key=l.key) }}">
         <input type="hidden" name="csrf" value="{{ csrf }}">
         <div class="dayboxes">{% for d in range(7) %}<label><input type="checkbox" name="days" value="{{ d }}" {{ 'checked' if d in l.days }}><span>{{ day_names[d][:2] }}</span></label>{% endfor %}</div>
+        <label class="transitin"><input type="number" name="transit" min="0" max="14" value="{{ l.transit }}" aria-label="Transit days"> days</label>
         <input type="text" name="email" value="{{ l.email }}" class="emailin" aria-label="Appointment email">
       </form>
     </td>
@@ -41,6 +42,7 @@
   <tr>
     <td class="loc"><b>{{ l.name }}</b>{% if l.edited %} <span class="pill pending">Edited</span>{% endif %}<div class="small">{{ l.city }}, TJ DC {{ l.tj_dcs }}</div></td>
     <td><span class="days">{% for d in range(7) %}<span class="{{ 'on' if d in l.days }}">{{ day_names[d][:2] }}</span>{% endfor %}</span></td>
+    <td>{{ l.transit }} days{% if l.transit_estimated %}<div class="small est">Estimate</div>{% endif %}</td>
     <td>{{ l.email }}</td>
     <td class="codes">{% for c, n, t in l.codes %}
       <div class="coderow">{{ c }} {{ n }}

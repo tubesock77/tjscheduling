@@ -206,3 +206,6 @@ button.x:hover { color: var(--red); filter: none; }
 button.danger { color: var(--red); border-color: var(--red); }
 .queue td.when { min-width: 130px; }
 .queue tr.q-review td, .queue tr.q-due td { background: var(--dock-soft); }
+.transitin { margin-right: 14px; vertical-align: middle; font-size: 13px; color: var(--slate); }
+.transitin input { width: 56px; }
+.small.est { color: #7a5a00; }

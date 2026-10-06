@@ -46,7 +46,9 @@ DEFAULT_SETTINGS = {
     "no_answer_alert_hours": "24",     # alert if the DC hasn't confirmed by this many hours out
     "reschedule_min_gap_days": "2",    # new date must be at least this many days after the current one
     "reschedule_max_attempts": "3",    # after this many reschedules on one PO, alert instead
-    "request_lead_days": "3",          # default requested date: first allowed day at least N days out
+    "request_lead_days": "3",          # (no longer used; replaced by ship_prep_days + transit)
+    "ship_prep_days": "0",             # days before a load can leave, added before transit
+    "appointed_status": "APPOINT",     # STATUS written to Smartsheet when an appointment is set
     "request_default_time": "08:00",
     "auto_send_requests": "0",         # 0 = Cody reviews each request before it goes out
     "request_hold_minutes": "30",      # if auto-send is on, wait this long before sending a new request

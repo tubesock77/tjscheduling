@@ -11,17 +11,25 @@ def next_allowed_day(on_or_after, allowed_weekdays):
     raise ValueError("No allowed delivery days configured")
 
 
-def default_request_date(today, allowed_weekdays, lead_days):
-    """First allowed delivery day at least `lead_days` from today.
+def earliest_arrival(today, ship_date, prep_days, transit_days):
+    """Soonest a truck could arrive: ships no earlier than today (or the ship date
+    if that's later), plus prep days, plus transit."""
+    leave = max(today, ship_date) if ship_date else today
+    return leave + timedelta(days=prep_days + transit_days)
 
-    Placeholder until Cody decides how requested dates should be chosen.
-    """
-    return next_allowed_day(today + timedelta(days=lead_days), allowed_weekdays)
+
+def default_request_date(earliest, allowed_weekdays):
+    """First allowed delivery day the truck can actually make."""
+    return next_allowed_day(earliest, allowed_weekdays)
 
 
-def reschedule_target(current_appt, allowed_weekdays, min_gap_days):
-    """Next allowed day at least `min_gap_days` after the current appointment."""
-    return next_allowed_day(current_appt + timedelta(days=min_gap_days), allowed_weekdays)
+def reschedule_target(current_appt, allowed_weekdays, min_gap_days, earliest=None):
+    """Next allowed day at least `min_gap_days` after the current appointment,
+    and never before the truck could arrive."""
+    start = current_appt + timedelta(days=min_gap_days)
+    if earliest and earliest > start:
+        start = earliest
+    return next_allowed_day(start, allowed_weekdays)
 
 
 def appt_datetime(appt_date, appt_time):

@@ -98,15 +98,15 @@
 <p class="hint">Rows set to APT. REQ. in Smartsheet. Check the requested date, then send. The email goes to the DC's appointment inbox in your usual table format.</p>
 {% if pending %}
 <table class="grid">
-  <tr><th>PO</th><th>Location</th><th>Type</th><th class="num">Pallets</th><th class="num">Cases</th><th>Ship date</th><th>Requested date</th><th>Time</th><th></th></tr>
+  <tr><th>PO</th><th>Location</th><th>Type</th><th class="num">Pallets</th><th class="num">Cases</th><th>Earliest arrival</th><th>Requested date</th><th>Time</th><th></th></tr>
   {% for p in pending %}
   <tr>
     <td><a class="po" href="{{ url_for('main.po_detail', po_id=p.id) }}">{{ p.po_display }}</a><div class="small">{{ p.order_no }}</div></td>
     <td class="loc"><b>{{ p.dc.name }}</b><div class="small">Delivers {{ p.dc.days_label }}</div></td>
     <td>{{ p.dc.load_type|title }}</td>
     <td class="num">{{ p.pallets }}</td><td class="num">{{ '{:,}'.format(p.cases) if p.cases }}</td>
-    <td>{{ p.ship_date|day }}</td>
-    <td><input type="date" name="requested_date" value="{{ p.requested_date }}" form="req{{ p.id }}"></td>
+    <td>{{ p.earliest|day }}<div class="small">{{ p.dc.transit }}-day transit{% if p.dc.transit_estimated %} (est.){% endif %}</div></td>
+    <td><input type="date" name="requested_date" min="{{ p.earliest }}" value="{{ p.requested_date }}" form="req{{ p.id }}"></td>
     <td><select name="requested_time" form="req{{ p.id }}">{% for t in time_options %}<option {{ 'selected' if t == (p.requested_time or settings.request_default_time) }}>{{ t }}</option>{% endfor %}</select></td>
     <td><form id="req{{ p.id }}" method="post" action="{{ url_for('main.po_request', po_id=p.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button>Send request</button></form></td>
   </tr>
@@ -131,7 +131,7 @@
 </table>
 {% else %}<div class="empty">No requests are waiting on a reply.</div>{% endif %}
 
-<h2>Booked <span class="n">{{ booked|length }}</span></h2>
+<h2>Appointed <span class="n">{{ booked|length }}</span></h2>
 <div class="legend"><span><i class="w"></i>Reschedule window ({{ lead }} hrs before)</span><span>Bar shows the next 7 days</span></div>
 {% if booked %}
 <table class="grid">
@@ -161,5 +161,5 @@
   </tr>
   {% endfor %}
 </table>
-{% else %}<div class="empty">No booked appointments yet.</div>{% endif %}
+{% else %}<div class="empty">No appointments set yet.</div>{% endif %}
 {% endblock %}

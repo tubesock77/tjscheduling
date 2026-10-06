@@ -84,6 +84,8 @@ def appointments():
     unmatched = db.q("SELECT * FROM unmatched_emails WHERE dismissed = 0 ORDER BY received DESC")
     pending = [view(p) for p in db.q(
         "SELECT * FROM pos WHERE state = 'pending_request' AND attention IS NULL ORDER BY ship_date")]
+    for p in pending:
+        p["earliest"] = jobs.earliest_for(p, p["dc"]).isoformat() if p["dc"] else None
     waiting = [view(p) for p in db.q(
         "SELECT * FROM pos WHERE state IN ('requested','reschedule_requested') AND attention IS NULL "
         "ORDER BY request_sent_at")]
@@ -284,6 +286,11 @@ def location_save(key):
         return redirect(url_for("main.locations"))
     days = sorted(int(d) for d in request.form.getlist("days") if d.isdigit() and int(d) < 7)
     email = request.form.get("email", "").strip()
+    transit = request.form.get("transit", "").strip()
+    if not transit.isdigit() or not 0 <= int(transit) <= 14:
+        flash("Transit days must be a number from 0 to 14.", "error")
+        return redirect(url_for("main.locations", edit=key))
+    transit = int(transit)
     if not days:
         flash("Pick at least one delivery day.", "error")
         return redirect(url_for("main.locations", edit=key))
@@ -291,13 +298,15 @@ def location_save(key):
         flash("That email address doesn't look right.", "error")
         return redirect(url_for("main.locations", edit=key))
     before = dc_lookup.location(key)
-    db.run("INSERT INTO location_overrides(key, days, email) VALUES (?,?,?) "
-           "ON CONFLICT(key) DO UPDATE SET days = excluded.days, email = excluded.email",
-           (key, ",".join(map(str, days)), email))
+    db.run("INSERT INTO location_overrides(key, days, email, transit) VALUES (?,?,?,?) "
+           "ON CONFLICT(key) DO UPDATE SET days = excluded.days, email = excluded.email, transit = excluded.transit",
+           (key, ",".join(map(str, days)), email, transit))
     names = dc_lookup.DAY_NAMES
     changes = []
     if before["days"] != days:
         changes.append("days " + "/".join(names[d] for d in before["days"]) + " to " + "/".join(names[d] for d in days))
+    if before["transit"] != transit or before["transit_estimated"]:
+        changes.append(f"transit {before['transit']} to {transit} days")
     if before["email"].lower() != email.lower():
         changes.append(f"email {before['email']} to {email}")
     if changes:
