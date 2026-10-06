@@ -308,12 +308,17 @@ def maybe_send_reminder():
 
 
 def run_all():
+    failed = False
     for job in (sync_smartsheet, process_inbox, process_sent, check_reschedules, maybe_send_reminder):
         try:
             job()
         except Exception as e:
+            failed = True
             log.exception("Job %s failed", job.__name__)
             msg = f"{job.__name__}: {e}"[:300]
             if db.meta_get("last_error") != msg:
                 db.meta_set("last_error", msg)
                 db.log(None, "Background job failed", msg)
+    if not failed and db.meta_get("last_error"):
+        db.meta_set("last_error", "")
+        db.log(None, "Background checks working again", None)
