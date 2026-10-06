@@ -49,6 +49,7 @@ def seed():
                       appt_date=ad, appt_time=at, conf_no=conf)
         if state != "pending_request":
             fields["conversation_id"] = f"demo-conv-{i}"
+        fields["product"] = ["SOUR", "SWIM", "X&O", "SPOOK", "CHOC", "CHSW", "TIDE"][i % 7]
         fields.update(extra)
         db.update_po(pid, **fields)
         if state == "pending_request" and dc:

@@ -87,7 +87,7 @@ def sync_smartsheet():
         if not po_number:
             continue  # group/header rows
         status = (r.get("STATUS") or "").strip()
-        fields = dict(order_no=r.get("ORDER NO."), dc_code=dc_lookup.normalize_code(r.get("DC #")),
+        fields = dict(order_no=r.get("ORDER NO."), product=(str(r.get("PRODUCT")).strip() if r.get("PRODUCT") else None), dc_code=dc_lookup.normalize_code(r.get("DC #")),
                       sheet_row_id=r["_row_id"], cases=_num(r.get("CS")), pallets=_num(r.get("PLTS")),
                       ship_date=_iso(r.get("SHIP DATE")), del_date=_iso(r.get("DEL DATE")),
                       act_ship=_iso(r.get("ACT SHIP")), sheet_status=status)

@@ -73,8 +73,11 @@ def reminder_body(missing_docs, attention, base_url):
     if missing_docs:
         parts.append("<p><b>Shipped POs still missing the BOL / Bioterrorism form:</b></p><ul>")
         for p in missing_docs:
-            parts.append(f"<li>PO {display_po(p['po_number'])} ({escape(p['order_no'] or '')}), "
-                         f"shipped {escape(p['act_ship'] or '')}</li>")
+            shipped = ""
+            if p["act_ship"]:
+                d = date.fromisoformat(p["act_ship"][:10])
+                shipped = f", shipped {d.strftime('%b')} {d.day}"
+            parts.append(f"<li>PO {display_po(p['po_number'])} ({escape(p['order_no'] or '')}){shipped}</li>")
         parts.append("</ul>")
     if attention:
         parts.append("<p><b>Appointments that need you:</b></p><ul>")

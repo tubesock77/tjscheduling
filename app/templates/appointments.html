@@ -22,7 +22,7 @@
 </p>
 {% if queue %}
 <table class="grid queue">
-  <tr><th>Sends</th><th>PO</th><th>Location</th><th>What</th><th>Current appointment</th><th>Will ask for</th><th></th></tr>
+  <tr><th>Sends</th><th>PO</th><th>Location</th><th>Product</th><th>What</th><th>Current appointment</th><th>Will ask for</th><th></th></tr>
   {% for i in queue %}{% set p = i.view %}
   <tr class="q-{{ i.status }}">
     <td class="when">
@@ -33,6 +33,7 @@
     </td>
     <td><a class="po" href="{{ url_for('main.po_detail', po_id=p.id) }}">{{ p.po_display }}</a><div class="small">{{ p.order_no }}</div></td>
     <td class="loc"><b>{{ i.dc.name if i.dc else 'Unknown DC' }}</b><div class="small">Delivers {{ i.dc.days_label if i.dc }}</div></td>
+    <td class="prod">{{ p.product or '' }}</td>
     <td>{{ 'Reschedule reply' if i.kind == 'Reschedule' else 'Appointment request' }}</td>
     <td>{% if p.appt_date %}{{ p.appt_date|day }} at {{ p.appt_time }}{% else %}<span class="small">None yet</span>{% endif %}</td>
     <td>{% if i.kind == 'Reschedule' %}
@@ -98,11 +99,12 @@
 <p class="hint">Rows set to APT. REQ. in Smartsheet. Check the requested date, then send. The email goes to the DC's appointment inbox in your usual table format.</p>
 {% if pending %}
 <table class="grid">
-  <tr><th>PO</th><th>Location</th><th>Type</th><th class="num">Pallets</th><th class="num">Cases</th><th>Earliest arrival</th><th>Requested date</th><th>Time</th><th></th></tr>
+  <tr><th>PO</th><th>Location</th><th>Product</th><th>Type</th><th class="num">Pallets</th><th class="num">Cases</th><th>Earliest arrival</th><th>Requested date</th><th>Time</th><th></th></tr>
   {% for p in pending %}
   <tr>
     <td><a class="po" href="{{ url_for('main.po_detail', po_id=p.id) }}">{{ p.po_display }}</a><div class="small">{{ p.order_no }}</div></td>
     <td class="loc"><b>{{ p.dc.name }}</b><div class="small">Delivers {{ p.dc.days_label }}</div></td>
+    <td class="prod">{{ p.product or '' }}</td>
     <td>{{ p.dc.load_type|title }}</td>
     <td class="num">{{ p.pallets }}</td><td class="num">{{ '{:,}'.format(p.cases) if p.cases }}</td>
     <td>{{ p.earliest|day }}<div class="small">{{ p.dc.transit }}-day transit{% if p.dc.transit_estimated %} (est.){% endif %}</div></td>
@@ -117,11 +119,12 @@
 <h2>Waiting on the DC <span class="n">{{ waiting|length }}</span></h2>
 {% if waiting %}
 <table class="grid">
-  <tr><th>PO</th><th>Location</th><th>Asked for</th><th>Current appointment</th><th>Sent</th><th>Status</th></tr>
+  <tr><th>PO</th><th>Location</th><th>Product</th><th>Asked for</th><th>Current appointment</th><th>Sent</th><th>Status</th></tr>
   {% for p in waiting %}
   <tr>
     <td><a class="po" href="{{ url_for('main.po_detail', po_id=p.id) }}">{{ p.po_display }}</a><div class="small">{{ p.order_no }}</div></td>
     <td class="loc"><b>{{ p.dc.name }}</b><div class="small">{{ p.dc.email }}</div></td>
+    <td class="prod">{{ p.product or '' }}</td>
     <td>{{ p.requested_date|day }}{% if p.state == 'requested' %} at {{ p.requested_time }}{% endif %}</td>
     <td>{% if p.appt_date %}{{ p.appt_date|day }} at {{ p.appt_time }}{% else %}<span class="small">None yet</span>{% endif %}</td>
     <td>{{ p.request_sent_at|stamp }}</td>
@@ -135,12 +138,13 @@
 <div class="legend"><span><i class="w"></i>Reschedule window ({{ lead }} hrs before)</span><span>Bar shows the next 7 days</span></div>
 {% if booked %}
 <table class="grid">
-  <tr><th>PO</th><th>Location</th><th>Appointment</th><th>Conf #</th><th>Time left</th><th>Moved</th><th>Keep</th></tr>
+  <tr><th>PO</th><th>Location</th><th>Product</th><th>Appointment</th><th>Conf #</th><th>Time left</th><th>Moved</th><th>Keep</th></tr>
   {% for p in booked %}
   {% set h = p.hours if p.hours is not none else 0 %}
   <tr>
     <td><a class="po" href="{{ url_for('main.po_detail', po_id=p.id) }}">{{ p.po_display }}</a><div class="small">{{ p.order_no }}</div></td>
     <td class="loc"><b>{{ p.dc.name if p.dc else 'Unknown DC' }}</b><div class="small">{{ p.dc.load_type|title if p.dc }}</div></td>
+    <td class="prod">{{ p.product or '' }}</td>
     <td>{{ p.appt_date|day }} at {{ p.appt_time }}</td>
     <td>{{ p.conf_no or '' }}</td>
     <td><div class="clock">

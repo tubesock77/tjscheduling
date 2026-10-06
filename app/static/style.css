@@ -209,3 +209,4 @@ button.danger { color: var(--red); border-color: var(--red); }
 .transitin { margin-right: 14px; vertical-align: middle; font-size: 13px; color: var(--slate); }
 .transitin input { width: 56px; }
 .small.est { color: #7a5a00; }
+.prod { font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
