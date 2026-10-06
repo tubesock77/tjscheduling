@@ -64,6 +64,18 @@ CREATE TABLE IF NOT EXISTS unmatched_emails (
     dismissed INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE IF NOT EXISTS location_overrides (
+    key TEXT PRIMARY KEY,
+    days TEXT,                           -- comma list of weekday numbers, e.g. "0,3,4"
+    email TEXT
+);
+CREATE TABLE IF NOT EXISTS code_overrides (
+    code TEXT PRIMARY KEY,
+    location_key TEXT,
+    bc_name TEXT,
+    load_type TEXT,
+    removed INTEGER NOT NULL DEFAULT 0
+);
 """
 
 
@@ -78,9 +90,16 @@ def conn():
     return c
 
 
+NEW_COLUMNS = {"reschedule_override": "TEXT", "auto_send_at": "TEXT"}
+
+
 def init():
     c = conn()
     c.executescript(SCHEMA)
+    have = {r["name"] for r in c.execute("PRAGMA table_info(pos)")}
+    for col, kind in NEW_COLUMNS.items():
+        if col not in have:
+            c.execute(f"ALTER TABLE pos ADD COLUMN {col} {kind}")
     for k, v in DEFAULT_SETTINGS.items():
         c.execute("INSERT OR IGNORE INTO settings(key, value) VALUES (?, ?)", (k, v))
     c.commit()

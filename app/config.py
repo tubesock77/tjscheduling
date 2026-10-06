@@ -49,6 +49,11 @@ DEFAULT_SETTINGS = {
     "request_lead_days": "3",          # default requested date: first allowed day at least N days out
     "request_default_time": "08:00",
     "auto_send_requests": "0",         # 0 = Cody reviews each request before it goes out
+    "request_hold_minutes": "30",      # if auto-send is on, wait this long before sending a new request
+    "paused": "0",                     # 1 = no automatic emails to DCs
+    "review_reschedules": "1",         # 1 = reschedules wait for Cody's OK
+    "daily_auto_limit": "10",          # more automatic emails than this in a day pauses the site
+    "queue_horizon_hours": "72",       # how far ahead the upcoming list looks
     "reminder_hour": "8",              # daily reminder email hour (site time)
     "vendor": "SWEET CANDY",
     "carrier": "BROCK",

@@ -21,6 +21,12 @@
     <div class="who">{{ user.name if user }} &nbsp;|&nbsp; <a href="{{ url_for('auth.logout') }}">Sign out</a></div>
   </aside>
   <main>
+    {% if nav.paused %}
+    <div class="pausebar">
+      <div><b>Automatic emails are paused.</b> Nothing goes to a DC unless you click Send yourself.{% if nav.pause_reason %} <span class="small">{{ nav.pause_reason }}</span>{% endif %}</div>
+      <form method="post" action="{{ url_for('main.pause_toggle') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="resume"><input type="hidden" name="next" value="{{ request.full_path }}"><button>Resume</button></form>
+    </div>
+    {% endif %}
     {% for cat, msg in get_flashed_messages(with_categories=true) %}
       <div class="flash {{ cat }}">{{ msg }}</div>
     {% endfor %}

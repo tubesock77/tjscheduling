@@ -32,6 +32,49 @@ def _iso(v):
     return str(v)[:10] if v else None
 
 
+def _hhmm(v):
+    """'8:00', '08:00', '0800', '8:00 AM' -> '08:00' (None if unreadable)."""
+    if not v:
+        return None
+    t = str(v).strip().lower().replace(".", "")
+    pm, am = t.endswith("pm"), t.endswith("am")
+    t = t.replace("am", "").replace("pm", "").strip()
+    if ":" in t:
+        hh, mm = t.split(":")[:2]
+    elif t.isdigit() and len(t) in (3, 4):
+        hh, mm = t[:-2], t[-2:]
+    else:
+        return None
+    try:
+        h, m = int(hh), int(mm[:2])
+    except ValueError:
+        return None
+    if pm and h < 12:
+        h += 12
+    if am and h == 12:
+        h = 0
+    return f"{h:02d}:{m:02d}" if h < 24 and m < 60 else None
+
+
+def _apply_sheet_appointment(po, r):
+    """If Cody changed APT DATE / APT TIME / CONF# in Smartsheet, adopt it."""
+    if po["state"] not in OPEN_STATES:
+        return
+    sheet_date = _iso(r.get("APT DATE"))
+    if not sheet_date:
+        return
+    sheet_time = _hhmm(r.get("APT TIME")) or po["appt_time"] or "08:00"
+    sheet_conf = str(r.get("CONF#")).strip() if r.get("CONF#") else po["conf_no"]
+    if (sheet_date, sheet_time, sheet_conf) == (po["appt_date"], po["appt_time"], po["conf_no"]):
+        return  # same as ours (includes our own write-backs)
+    before = f"{po['appt_date']} {po['appt_time']}" if po["appt_date"] else "none"
+    db.update_po(po["id"], appt_date=sheet_date, appt_time=sheet_time, conf_no=sheet_conf,
+                 state="booked", attention=None, no_answer_alerted=0,
+                 reschedule_override=None, auto_send_at=None)
+    db.log(po["id"], "Appointment changed in Smartsheet",
+           f"{before} to {sheet_date} {sheet_time}" + (f", conf {sheet_conf}" if sheet_conf else ""), "Cody")
+
+
 # ---------------------------------------------------------------- Smartsheet
 def sync_smartsheet():
     """Pick up STATUS = APT. REQ. rows and keep known POs current."""
@@ -60,6 +103,7 @@ def sync_smartsheet():
             prepare_request(po_id)
         else:
             db.update_po(existing["id"], **fields)
+            _apply_sheet_appointment(existing, r)
             if status in ("SHIPPED", "ARCHIVE") and existing["state"] in OPEN_STATES:
                 db.update_po(existing["id"], state="shipped", attention=None)
                 db.log(existing["id"], "Marked shipped", f"Smartsheet STATUS is {status}")
@@ -81,7 +125,8 @@ def prepare_request(po_id):
         d = rules.default_request_date(now().date(), dc["days"], int(s["request_lead_days"]))
         db.update_po(po_id, requested_date=d.isoformat(), requested_time=s["request_default_time"])
     if s["auto_send_requests"] == "1":
-        send_request(po_id)
+        hold = int(s["request_hold_minutes"])
+        db.update_po(po_id, auto_send_at=(now() + timedelta(minutes=hold)).isoformat(timespec="seconds"))
 
 
 def send_request(po_id, actor="Site"):
@@ -93,7 +138,7 @@ def send_request(po_id, actor="Site"):
     msg_id, conv_id = Services.graph.send_new(dc["email"], emails.request_subject(po, s),
                                               emails.request_body(po, dc, s))
     db.update_po(po_id, state="requested", conversation_id=conv_id, last_message_id=msg_id,
-                 request_sent_at=db.stamp(), attention=None, no_answer_alerted=0)
+                 request_sent_at=db.stamp(), attention=None, no_answer_alerted=0, auto_send_at=None)
     db.log(po_id, "Appointment request sent",
            f"To {dc['email']} for {po['requested_date']} {po['requested_time']}", actor)
 
@@ -109,14 +154,25 @@ def _match_po(msg, text):
     return None
 
 
+DC_DOMAIN = "@wcdinc.net"
+
+
 def process_inbox():
-    for msg in Services.graph.unread_inbox():
+    """Only DC emails (@wcdinc.net) or replies on threads the site started.
+
+    Everything else in April's inbox is left alone: not read, not marked, not listed.
+    """
+    since = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    for msg in Services.graph.unread_inbox(since):
         mid = msg["id"]
         if db.one("SELECT 1 FROM processed_messages WHERE message_id = ?", (mid,)):
             continue
+        sender = ((msg.get("from") or {}).get("emailAddress") or {}).get("address", "").lower()
+        known_thread = db.one("SELECT 1 FROM pos WHERE conversation_id = ?", (msg.get("conversationId"),))
+        if not sender.endswith(DC_DOMAIN) and not known_thread:
+            continue  # not a DC email; don't touch it
         text = parser.html_to_text((msg.get("uniqueBody") or {}).get("content", ""))
         po = _match_po(msg, text)
-        sender = ((msg.get("from") or {}).get("emailAddress") or {}).get("address", "")
         if po is None:
             db.run("INSERT OR IGNORE INTO unmatched_emails(message_id, sender, subject, received) "
                    "VALUES (?,?,?,?)", (mid, sender, msg.get("subject"), msg.get("receivedDateTime")))
@@ -165,6 +221,94 @@ def write_back(po_id):
         db.update_po(po_id, attention=f"Couldn't update Smartsheet: {e}")
 
 
+# ---------------------------------------------------------------- Safety
+AUTO_ACTIONS = ("Appointment request sent", "Reschedule requested")
+
+
+def is_paused():
+    return db.settings().get("paused") == "1"
+
+
+def pause(reason, actor="Site"):
+    db.set_setting("paused", "1")
+    db.meta_set("pause_reason", reason)
+    db.log(None, "Automatic emails paused", reason, actor)
+
+
+def resume(actor="Cody"):
+    db.set_setting("paused", "0")
+    db.meta_set("pause_reason", "")
+    db.log(None, "Automatic emails resumed", None, actor)
+
+
+def auto_sends_today():
+    start = now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat(timespec="seconds")
+    marks = ",".join("?" * len(AUTO_ACTIONS))
+    return db.one(f"SELECT COUNT(*) FROM activity WHERE actor = 'Site' AND ts >= ? AND action IN ({marks})",
+                  (start, *AUTO_ACTIONS))[0]
+
+
+def can_auto_send():
+    """False if paused or the daily limit is reached (which also pauses)."""
+    if is_paused():
+        return False
+    limit = int(db.settings()["daily_auto_limit"])
+    if auto_sends_today() >= limit:
+        pause(f"Hit the daily limit of {limit} automatic emails. Check Activity, then resume.")
+        return False
+    return True
+
+
+def send_due_requests():
+    if db.settings()["auto_send_requests"] != "1":
+        return
+    for po in db.q("SELECT * FROM pos WHERE state = 'pending_request' AND attention IS NULL "
+                   "AND auto_send_at IS NOT NULL AND auto_send_at <= ?", (now().isoformat(timespec="seconds"),)):
+        if not can_auto_send():
+            return
+        send_request(po["id"])
+
+
+def _proposed_date(po, dc, gap):
+    if po["reschedule_override"]:
+        return po["reschedule_override"]
+    return rules.reschedule_target(date.fromisoformat(po["appt_date"]), dc["days"], gap).isoformat()
+
+
+def upcoming():
+    """Automatic emails the site plans to send within the horizon, soonest first."""
+    s, t = db.settings(), now()
+    lead, gap = int(s["reschedule_lead_hours"]), int(s["reschedule_min_gap_days"])
+    horizon, max_attempts = int(s["queue_horizon_hours"]), int(s["reschedule_max_attempts"])
+    paused, review = s["paused"] == "1", s["review_reschedules"] == "1"
+    items = []
+    for po in db.q("SELECT * FROM pos WHERE state = 'booked' AND keep = 0 AND attention IS NULL"):
+        dc = dc_lookup.resolve(po["dc_code"])
+        appt = rules.appt_datetime(po["appt_date"], po["appt_time"])
+        if dc is None or appt is None or appt <= t or po["reschedule_count"] >= max_attempts:
+            continue
+        send_at = appt - timedelta(hours=lead)
+        if send_at > t + timedelta(hours=horizon):
+            continue
+        due = send_at <= t
+        status = ("paused" if paused and due else "review" if review and due
+                  else "due" if due else "scheduled")
+        items.append({"po": po, "dc": dc, "kind": "Reschedule", "send_at": send_at,
+                      "secs": max(0, int((send_at - t).total_seconds())), "status": status,
+                      "new_date": _proposed_date(po, dc, gap)})
+    if s["auto_send_requests"] == "1":
+        for po in db.q("SELECT * FROM pos WHERE state = 'pending_request' AND attention IS NULL "
+                       "AND auto_send_at IS NOT NULL"):
+            send_at = datetime.fromisoformat(po["auto_send_at"])
+            due = send_at <= t
+            items.append({"po": po, "dc": dc_lookup.resolve(po["dc_code"]), "kind": "Request",
+                          "send_at": send_at, "secs": max(0, int((send_at - t).total_seconds())),
+                          "status": "paused" if paused and due else "due" if due else "scheduled",
+                          "new_date": po["requested_date"]})
+    items.sort(key=lambda i: i["send_at"])
+    return items
+
+
 # ---------------------------------------------------------------- Reschedules
 def check_reschedules():
     s = db.settings()
@@ -180,6 +324,10 @@ def check_reschedules():
                 continue
             if po["attention"]:
                 continue  # waiting on Cody
+            if s["review_reschedules"] == "1":
+                continue  # shows as "Waiting for your OK" in the upcoming list
+            if not can_auto_send():
+                continue
             request_reschedule(po["id"])
         elif po["state"] in ("requested", "reschedule_requested") and not po["no_answer_alerted"]:
             h = rules.hours_until(po["appt_date"], po["appt_time"], t)
@@ -195,15 +343,14 @@ def request_reschedule(po_id, actor="Site"):
         db.update_po(po_id, attention="Can't reschedule: DC # not recognized")
         return
     s = db.settings()
-    target = rules.reschedule_target(date.fromisoformat(po["appt_date"]), dc["days"],
-                                     int(s["reschedule_min_gap_days"]))
+    target = date.fromisoformat(_proposed_date(po, dc, int(s["reschedule_min_gap_days"])))
     reply_to = _thread_message(po)
     if not reply_to:
         db.update_po(po_id, attention="Couldn't find the email thread to reply on")
         return
     Services.graph.reply_all(reply_to, emails.reschedule_body(po, target.isoformat(), s))
     db.update_po(po_id, state="reschedule_requested", requested_date=target.isoformat(),
-                 reschedule_count=po["reschedule_count"] + 1, no_answer_alerted=0)
+                 reschedule_count=po["reschedule_count"] + 1, no_answer_alerted=0, reschedule_override=None)
     db.log(po_id, "Reschedule requested", f"Asked to move {po['appt_date']} to {target.isoformat()}", actor)
 
 
@@ -297,12 +444,18 @@ def maybe_send_reminder():
 
 
 def run_all():
-    for job in (sync_smartsheet, process_inbox, process_sent, check_reschedules, maybe_send_reminder):
+    failed = False
+    for job in (sync_smartsheet, process_inbox, process_sent, send_due_requests, check_reschedules,
+                maybe_send_reminder):
         try:
             job()
         except Exception as e:
+            failed = True
             log.exception("Job %s failed", job.__name__)
             msg = f"{job.__name__}: {e}"[:300]
             if db.meta_get("last_error") != msg:
                 db.meta_set("last_error", msg)
                 db.log(None, "Background job failed", msg)
+    if not failed and db.meta_get("last_error"):
+        db.meta_set("last_error", "")
+        db.log(None, "Background checks working again", None)

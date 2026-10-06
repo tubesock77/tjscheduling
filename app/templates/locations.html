@@ -2,16 +2,54 @@
 {% block title %}Locations | TJ Scheduling{% endblock %}
 {% block body %}
 <div class="pagehead"><div><h1>Locations</h1>
-  <div class="sub">Where each Smartsheet DC # gets emailed, and the days a delivery can be moved to. From TJ's 2026 DC list.</div></div></div>
+  <div class="sub">Where each Smartsheet DC # gets emailed, and the days a delivery can be moved to. Starts from TJ's 2026 DC list.</div></div></div>
+
+<form class="addcode" method="post" action="{{ url_for('main.code_add') }}">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <b>Add a DC #</b>
+  <label class="field">DC #<input type="text" name="code" size="6" inputmode="numeric" required></label>
+  <label class="field">Goes to<select name="location_key" required>
+    <option value="">Choose a location</option>
+    {% for l in locations %}<option value="{{ l.key }}">{{ l.name }}</option>{% endfor %}</select></label>
+  <label class="field">BC name<input type="text" name="bc_name" size="22" placeholder="e.g. Fontana Dry"></label>
+  <label class="field">Type<select name="load_type"><option>DRY</option><option>COOLER</option></select></label>
+  <div class="field"><button>Add</button></div>
+</form>
+
 <table class="grid">
-  <tr><th>Location</th><th>Delivery days</th><th>Appointment email</th><th>Your DC # codes</th></tr>
+  <tr><th>Location</th><th>Delivery days</th><th>Appointment email</th><th>Your DC # codes</th><th></th></tr>
   {% for l in locations %}
-  <tr>
+  {% if edit == l.key %}
+  <tr class="editing">
     <td class="loc"><b>{{ l.name }}</b><div class="small">{{ l.city }}, TJ DC {{ l.tj_dcs }}</div></td>
+    <td colspan="2">
+      <form id="loc-{{ l.key }}" method="post" action="{{ url_for('main.location_save', key=l.key) }}">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <div class="dayboxes">{% for d in range(7) %}<label><input type="checkbox" name="days" value="{{ d }}" {{ 'checked' if d in l.days }}><span>{{ day_names[d][:2] }}</span></label>{% endfor %}</div>
+        <input type="text" name="email" value="{{ l.email }}" class="emailin" aria-label="Appointment email">
+      </form>
+    </td>
+    <td class="codes">{% for c, n, t in l.codes %}<div>{{ c }} {{ n }}</div>{% endfor %}</td>
+    <td><div class="docacts">
+      <button form="loc-{{ l.key }}">Save</button>
+      <a class="btn quiet" href="{{ url_for('main.locations') }}">Cancel</a>
+    </div>
+    {% if l.edited %}<form method="post" action="{{ url_for('main.location_reset', key=l.key) }}" style="text-align:right"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="ghost">Reset to TJ list</button></form>{% endif %}
+    </td>
+  </tr>
+  {% else %}
+  <tr>
+    <td class="loc"><b>{{ l.name }}</b>{% if l.edited %} <span class="pill pending">Edited</span>{% endif %}<div class="small">{{ l.city }}, TJ DC {{ l.tj_dcs }}</div></td>
     <td><span class="days">{% for d in range(7) %}<span class="{{ 'on' if d in l.days }}">{{ day_names[d][:2] }}</span>{% endfor %}</span></td>
     <td>{{ l.email }}</td>
-    <td class="codes">{% for c, n in l.codes %}<div>{{ c }} {{ n }}</div>{% else %}None in BC yet{% endfor %}</td>
+    <td class="codes">{% for c, n, t in l.codes %}
+      <div class="coderow">{{ c }} {{ n }}
+        <form class="inline" method="post" action="{{ url_for('main.code_remove', code=c) }}" onsubmit="return confirm('Remove DC # {{ c }}? POs with this code will need you until it is added back.')">
+          <input type="hidden" name="csrf" value="{{ csrf }}"><button class="x" title="Remove DC # {{ c }}" aria-label="Remove DC # {{ c }}">&times;</button></form></div>
+      {% else %}None in BC yet{% endfor %}</td>
+    <td style="text-align:right"><a class="btn quiet" href="{{ url_for('main.locations', edit=l.key) }}#loc-{{ l.key }}">Edit</a></td>
   </tr>
+  {% endif %}
   {% endfor %}
 </table>
 {% endblock %}

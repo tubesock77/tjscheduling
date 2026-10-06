@@ -181,3 +181,28 @@ dl.facts dt { color: var(--slate); font-size: 13.5px; }
 .alert .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pill.pending { color: var(--slate); background: var(--rule-soft); border-color: #c6cdd4; }
 .set.wide { grid-template-columns: 1fr 230px; }
+.addcode { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; border: 1px solid var(--rule);
+  border-left: 4px solid var(--navy); padding: 12px 14px; margin-bottom: 22px; }
+.addcode > b { align-self: center; margin-right: 6px; }
+.addcode .field { margin: 0; }
+tr.editing td { background: #fafbfc; }
+.dayboxes { display: inline-grid; grid-template-columns: repeat(7, 34px); border: 1px solid var(--ink); margin-right: 14px; vertical-align: middle; }
+.dayboxes label { position: relative; cursor: pointer; border-left: 1px solid var(--rule); }
+.dayboxes label:first-child { border-left: 0; }
+.dayboxes input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.dayboxes span { display: block; text-align: center; font-size: 12.5px; padding: 6px 0; color: #a0a8b0; }
+.dayboxes input:checked + span { background: var(--ink); color: var(--paper); font-weight: 700; }
+.dayboxes input:focus-visible + span { outline: 2px solid var(--navy); outline-offset: -2px; }
+.emailin { width: 360px; max-width: 100%; vertical-align: middle; }
+.coderow { display: flex; align-items: center; gap: 4px; }
+button.x { background: none; border: 0; color: #a0a8b0; padding: 0 4px; font-size: 16px; line-height: 1; font-weight: 400; }
+button.x:hover { color: var(--red); filter: none; }
+.coderow { justify-content: space-between; }
+
+.pausebar { display: flex; justify-content: space-between; align-items: center; gap: 16px; background: var(--dock);
+  color: var(--ink); padding: 10px 14px; margin: -6px 0 18px; }
+.pausebar .small { color: var(--ink); opacity: .8; }
+.pausebar button { background: var(--ink); border-color: var(--ink); }
+button.danger { color: var(--red); border-color: var(--red); }
+.queue td.when { min-width: 130px; }
+.queue tr.q-review td, .queue tr.q-due td { background: var(--dock-soft); }

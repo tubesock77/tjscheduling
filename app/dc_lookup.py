@@ -83,13 +83,51 @@ def normalize_code(value):
     return s or None
 
 
+def _db():
+    from . import db  # late import: db doesn't depend on this module
+    return db
+
+
+def location(key):
+    """Location with any edits made on the site applied."""
+    loc = dict(LOCATIONS[key])
+    try:
+        o = _db().one("SELECT days, email FROM location_overrides WHERE key = ?", (key,))
+    except Exception:
+        o = None
+    if o:
+        if o["days"] is not None:
+            loc["days"] = [int(d) for d in o["days"].split(",") if d != ""]
+        if o["email"]:
+            loc["email"] = o["email"]
+    return loc
+
+
+def all_codes():
+    """BC code -> (location key, BC name, load type), with site edits applied."""
+    codes = dict(BC_CODES)
+    try:
+        rows = _db().q("SELECT * FROM code_overrides")
+    except Exception:
+        rows = []
+    for r in rows:
+        if r["removed"]:
+            codes.pop(r["code"], None)
+        else:
+            codes[r["code"]] = (r["location_key"], r["bc_name"], r["load_type"])
+    return codes
+
+
 def resolve(dc_code):
     """Return a dict for a BC destination code, or None if unknown."""
     code = normalize_code(dc_code)
-    if not code or code not in BC_CODES:
+    codes = all_codes()
+    if not code or code not in codes:
         return None
-    key, bc_name, load_type = BC_CODES[code]
-    loc = LOCATIONS[key]
+    key, bc_name, load_type = codes[code]
+    if key not in LOCATIONS:
+        return None
+    loc = location(key)
     return {
         "code": code,
         "key": key,
@@ -104,4 +142,4 @@ def resolve(dc_code):
 
 
 def codes_for_location(key):
-    return sorted(c for c, v in BC_CODES.items() if v[0] == key)
+    return sorted(c for c, v in all_codes().items() if v[0] == key)

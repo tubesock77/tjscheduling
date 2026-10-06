@@ -19,6 +19,7 @@ POS = [
      "N18401233", {"requested_date": "2026-10-08", "reschedule_count": 1, "request_sent_at": "2026-10-04T09:05:00"}),
     ("0158502808", "S-ORD01250", "6826", 1500, 30, "2026-09-21", None, "booked", "2026-10-06", "11:00", "K23299166",
      {"keep": 1}),
+    ("0158142510", "S-ORD00801", "6245", 1200, 24, "2026-09-28", None, "booked", "2026-10-06", "14:00", "I18300456", {}),
     ("0158142471", "S-ORD00789", "6599", 1200, 24, "2026-09-04", "2026-10-05", "booked", "2026-10-08", "10:00",
      "H18304223", {}),
     ("0156374844", "S-ORD00232", "5625", 1200, 24, "2026-10-11", None, "booked", "2026-10-09", "10:00", "N18402157", {}),
@@ -65,6 +66,7 @@ def seed():
             db.log(pid, "Marked document sent outside site", None, "Cody")
         if extra.get("doc_status") == "sent":
             db.log(pid, "Document sent", "158142470.pdf replied on the appointment thread", "Cody")
+    db.run("UPDATE activity SET ts = '2026-10-02T09:00:00'")  # seed history happened earlier
     db.run("INSERT INTO unmatched_emails(message_id, sender, subject, received) VALUES (?,?,?,?)",
            ("demo-x", "Irving_Vendor_Appointments@wcdinc.net", "RE: Vendor appointment update", "2026-10-05T07:41:00"))
     db.meta_set("last_sync", "2026-10-05T09:50:00")

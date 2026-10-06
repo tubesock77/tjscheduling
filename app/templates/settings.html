@@ -5,6 +5,13 @@
 <form method="post"><input type="hidden" name="csrf" value="{{ csrf }}">
 <div class="setgrid">
 <div>
+  <h2>Safety</h2>
+  <div class="set"><label><b>Automatic emails</b><span>{{ 'Paused. Use Resume in the yellow bar to turn back on.' if s.paused == '1' else 'On. Use Pause on the Appointments page to stop them.' }} Sent today: {{ status.sent_today }} of {{ s.daily_auto_limit }}.</span></label>
+    <span class="pill {{ 'pending' if s.paused == '1' else 'sent' }}">{{ 'Paused' if s.paused == '1' else 'On' }}</span></div>
+  <div class="set"><label for="rr"><b>Reschedules wait for my OK</b><span>Recommended at first. Uncheck to let them send when the timer runs out.</span></label><input id="rr" type="checkbox" name="review_reschedules" value="1" {{ 'checked' if s.review_reschedules == '1' }}></div>
+  <div class="set"><label for="dl"><b>Daily limit</b><span>More automatic emails than this in one day pauses the site and alerts you</span></label><input id="dl" type="number" min="1" name="daily_auto_limit" value="{{ s.daily_auto_limit }}"></div>
+  <div class="set"><label for="qh"><b>Upcoming list looks ahead</b><span>Hours</span></label><input id="qh" type="number" min="12" name="queue_horizon_hours" value="{{ s.queue_horizon_hours }}"></div>
+  <div class="set"><label for="hm"><b>Hold new requests</b><span>Minutes to wait before an automatic request sends, so you can catch mistakes</span></label><input id="hm" type="number" min="0" name="request_hold_minutes" value="{{ s.request_hold_minutes }}"></div>
   <h2>Rescheduling</h2>
   <div class="set"><label for="lh"><b>Ask to reschedule</b><span>Hours before the appointment, unless you mark it Keep</span></label><input id="lh" type="number" min="24" name="reschedule_lead_hours" value="{{ s.reschedule_lead_hours }}"></div>
   <div class="set"><label for="na"><b>Alert me if no answer</b><span>Hours before the appointment</span></label><input id="na" type="number" min="1" name="no_answer_alert_hours" value="{{ s.no_answer_alert_hours }}"></div>

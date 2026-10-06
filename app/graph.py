@@ -95,11 +95,19 @@ class GraphClient:
                 raise GraphError(f"Attachment upload failed: {r.status_code} {r.text[:300]}")
 
     # -- reading ----------------------------------------------------------
-    def unread_inbox(self, top=50):
+    def unread_inbox(self, since_iso_utc, max_pages=10):
+        """Unread inbox messages received since a date, following paging."""
         data = self._req("GET", "/mailFolders/inbox/messages", params={
-            "$filter": "isRead eq false", "$top": str(top),
+            "$filter": f"isRead eq false and receivedDateTime ge {since_iso_utc}", "$top": "50",
             "$select": "id,subject,uniqueBody,from,conversationId,receivedDateTime"})
-        return data.get("value", [])
+        msgs = data.get("value", [])
+        for _ in range(max_pages - 1):
+            nxt = data.get("@odata.nextLink")
+            if not nxt:
+                break
+            data = self._req("GET", nxt)
+            msgs.extend(data.get("value", []))
+        return msgs
 
     def sent_since(self, iso_utc, top=50):
         data = self._req("GET", "/mailFolders/sentitems/messages", params={
@@ -144,7 +152,7 @@ class DemoGraph:
         self.outbox.append(("reply", message_id, attachment[0] if attachment else None))
         return f"demo-reply-{len(self.outbox)}"
 
-    def unread_inbox(self, top=50):
+    def unread_inbox(self, since_iso_utc, max_pages=10):
         return []
 
     def sent_since(self, iso_utc, top=50):

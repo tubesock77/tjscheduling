@@ -3,9 +3,69 @@
 <div class="pagehead">
   <div><h1>Appointments</h1>
     <div class="sub">Smartsheet and the mailbox were last checked {{ last_sync|stamp if last_sync else 'never' }}.</div></div>
-  <form method="post" action="{{ url_for('main.sync_now') }}"><input type="hidden" name="csrf" value="{{ csrf }}">
-    <button class="quiet">Check now</button></form>
+  <div class="row">
+    {% if not nav.paused %}
+    <form method="post" action="{{ url_for('main.pause_toggle') }}" onsubmit="return confirm('Pause all automatic emails to DCs?')"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="pause">
+      <button class="quiet danger">Pause automatic emails</button></form>
+    {% endif %}
+    <form method="post" action="{{ url_for('main.sync_now') }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="quiet">Check now</button></form>
+  </div>
 </div>
+
+<h2>Upcoming automatic emails <span class="n">{{ queue|length }}</span></h2>
+<p class="hint">
+  {% if nav.paused %}Paused. These won't send until you resume or click Send now.
+  {% elif settings.review_reschedules == '1' %}Reschedules wait for your OK when the timer runs out. Turn this off in Settings once you trust it.
+  {% else %}Reschedules send on their own when the timer runs out, unless you click Keep.{% endif %}
+  Showing the next {{ settings.queue_horizon_hours }} hours.
+</p>
+{% if queue %}
+<table class="grid queue">
+  <tr><th>Sends</th><th>PO</th><th>Location</th><th>What</th><th>Current appointment</th><th>Will ask for</th><th></th></tr>
+  {% for i in queue %}{% set p = i.view %}
+  <tr class="q-{{ i.status }}">
+    <td class="when">
+      {% if i.status == 'scheduled' %}<b class="cd" data-secs="{{ i.secs }}">{{ (i.secs // 3600) }} hrs {{ (i.secs % 3600) // 60 }} min</b><div class="small">{{ i.send_at.isoformat()|stamp }}</div>
+      {% elif i.status == 'review' %}<span class="pill wait">Waiting for your OK</span>
+      {% elif i.status == 'paused' %}<span class="pill pending">Paused</span>
+      {% else %}<b>At next check</b><div class="small">within 10 min</div>{% endif %}
+    </td>
+    <td><a class="po" href="{{ url_for('main.po_detail', po_id=p.id) }}">{{ p.po_display }}</a><div class="small">{{ p.order_no }}</div></td>
+    <td class="loc"><b>{{ i.dc.name if i.dc else 'Unknown DC' }}</b><div class="small">Delivers {{ i.dc.days_label if i.dc }}</div></td>
+    <td>{{ 'Reschedule reply' if i.kind == 'Reschedule' else 'Appointment request' }}</td>
+    <td>{% if p.appt_date %}{{ p.appt_date|day }} at {{ p.appt_time }}{% else %}<span class="small">None yet</span>{% endif %}</td>
+    <td>{% if i.kind == 'Reschedule' %}
+      <form class="inline" method="post" action="{{ url_for('main.po_override', po_id=p.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="date" name="new_date" value="{{ i.new_date }}"><button class="ghost">Save</button></form>
+      {% else %}{{ i.new_date|day }}{% endif %}</td>
+    <td><div class="docacts">
+      {% if i.kind == 'Reschedule' %}
+      <form class="inline" method="post" action="{{ url_for('main.po_reschedule', po_id=p.id) }}" onsubmit="return confirm('Send the reschedule email for PO {{ p.po_display }} now?')"><input type="hidden" name="csrf" value="{{ csrf }}"><button>Send now</button></form>
+      <form class="inline" method="post" action="{{ url_for('main.po_keep', po_id=p.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="keep" value="1"><button class="quiet" title="Keep this appointment. No email will be sent.">Keep</button></form>
+      {% else %}
+      <form class="inline" method="post" action="{{ url_for('main.po_request', po_id=p.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button>Send now</button></form>
+      <form class="inline" method="post" action="{{ url_for('main.po_cancel_auto', po_id=p.id) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="quiet">Don't auto-send</button></form>
+      {% endif %}
+    </div></td>
+  </tr>
+  {% endfor %}
+</table>
+<script>
+(function () {
+  var start = Date.now();
+  function tick() {
+    var gone = Math.floor((Date.now() - start) / 1000);
+    document.querySelectorAll('.cd').forEach(function (el) {
+      var s = Math.max(0, parseInt(el.dataset.secs, 10) - gone);
+      var d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+      el.textContent = s <= 0 ? 'Due now' : (d ? d + ' d ' : '') + h + ' hrs ' + m + ' min';
+    });
+  }
+  tick(); setInterval(tick, 30000);
+})();
+</script>
+{% else %}<div class="empty">No automatic emails are planned in the next {{ settings.queue_horizon_hours }} hours.</div>{% endif %}
 
 <h2>Needs you <span class="n">{{ attention|length + unmatched|length }}</span></h2>
 {% if attention or unmatched %}
