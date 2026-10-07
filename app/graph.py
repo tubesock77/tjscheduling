@@ -4,6 +4,7 @@ Needs application permissions Mail.ReadWrite + Mail.Send, scoped to the
 scheduling mailbox with Exchange RBAC for Applications.
 """
 import base64
+import hashlib
 import time
 
 import requests
@@ -64,16 +65,60 @@ class GraphClient:
         return draft["id"], draft["conversationId"]
 
     def reply_all(self, message_id, html, attachment=None):
-        """Reply-all on a thread. attachment = (filename, bytes) or None."""
-        draft = self._req("POST", f"/messages/{message_id}/createReplyAll", json={})
-        # Put our text above the quoted thread.
-        existing = draft.get("body", {}).get("content", "")
-        self._req("PATCH", f"/messages/{draft['id']}",
-                  json={"body": {"contentType": "HTML", "content": html + existing}})
-        if attachment:
-            self._attach(draft["id"], *attachment)
-        self._req("POST", f"/messages/{draft['id']}/send")
-        return draft["id"]
+        """Reply-all on a thread. attachment = (filename, bytes) or None.
+
+        Small PDFs are included in the same call that creates the reply, which is
+        more reliable than adding them to the draft afterwards. Every attachment is
+        downloaded back and compared byte for byte before the email is sent.
+        """
+        payload = {"comment": ""}
+        small = attachment and len(attachment[1]) < SMALL_ATTACHMENT_LIMIT
+        if small:
+            filename, data = attachment
+            payload = {"message": {"attachments": [{
+                "@odata.type": "#microsoft.graph.fileAttachment", "name": filename,
+                "contentType": "application/pdf", "isInline": False,
+                "contentBytes": base64.b64encode(data).decode("ascii")}]}}
+        draft = self._req("POST", f"/messages/{message_id}/createReplyAll", json=payload)
+        draft_id = draft["id"]
+        try:
+            # Our text above the quoted thread.
+            existing = draft.get("body", {}).get("content", "")
+            self._req("PATCH", f"/messages/{draft_id}",
+                      json={"body": {"contentType": "HTML", "content": html + existing}})
+            if attachment:
+                if not small:
+                    self._attach(draft_id, *attachment)
+                stored = None
+                for wait in (0, 2, 5):  # give Exchange a moment if needed
+                    time.sleep(wait)
+                    stored = self._stored_attachment(draft_id, attachment[0])
+                    if stored is not None and hashlib.sha256(stored).digest() == hashlib.sha256(attachment[1]).digest():
+                        break
+                else:
+                    got = "nothing" if stored is None else f"{len(stored):,} bytes"
+                    raise GraphError(f"The PDF didn't upload to Outlook intact (sent {len(attachment[1]):,} bytes, "
+                                     f"Outlook has {got}), so nothing was sent. Try again.")
+            self._req("POST", f"/messages/{draft_id}/send")
+        except Exception:
+            self._delete(draft_id)
+            raise
+        return draft_id
+
+    def _stored_attachment(self, draft_id, filename):
+        listing = self._req("GET", f"/messages/{draft_id}/attachments", params={"$select": "id,name,size"})
+        att = next((a for a in listing.get("value", []) if a.get("name") == filename), None)
+        if att is None:
+            return None
+        r = requests.get(f"{GRAPH}/users/{self.mailbox}/messages/{draft_id}/attachments/{att['id']}/$value",
+                         headers={"Authorization": f"Bearer {self._get_token()}"}, timeout=120)
+        return r.content if r.status_code == 200 else None
+
+    def _delete(self, message_id):
+        try:
+            self._req("DELETE", f"/messages/{message_id}")
+        except GraphError:
+            pass
 
     def _attach(self, draft_id, filename, data):
         if len(data) < SMALL_ATTACHMENT_LIMIT:
@@ -90,6 +135,7 @@ class GraphClient:
             chunk = data[start:start + CHUNK]
             end = start + len(chunk) - 1
             r = requests.put(upload_url, data=chunk, timeout=120, headers={
+                "Content-Type": "application/octet-stream",
                 "Content-Length": str(len(chunk)), "Content-Range": f"bytes {start}-{end}/{total}"})
             if r.status_code >= 400:
                 raise GraphError(f"Attachment upload failed: {r.status_code} {r.text[:300]}")
@@ -118,6 +164,22 @@ class GraphClient:
     def attachment_names(self, message_id):
         data = self._req("GET", f"/messages/{message_id}/attachments", params={"$select": "name"})
         return [a.get("name", "") for a in data.get("value", [])]
+
+    def sent_attachment(self, conversation_id, filename):
+        """Fetch a PDF we sent on a thread back out of Sent Items. Returns bytes or None."""
+        data = self._req("GET", "/mailFolders/sentitems/messages", params={
+            "$filter": f"conversationId eq '{conversation_id}'", "$select": "id,sentDateTime,hasAttachments",
+            "$top": "25"})
+        msgs = sorted((m for m in data.get("value", []) if m.get("hasAttachments")),
+                      key=lambda m: m.get("sentDateTime", ""), reverse=True)
+        for m in msgs:
+            listing = self._req("GET", f"/messages/{m['id']}/attachments", params={"$select": "id,name,size"})
+            att = next((a for a in listing.get("value", []) if a.get("name") == filename), None)
+            if att:
+                r = requests.get(f"{GRAPH}/users/{self.mailbox}/messages/{m['id']}/attachments/{att['id']}/$value",
+                                 headers={"Authorization": f"Bearer {self._get_token()}"}, timeout=120)
+                return r.content if r.status_code == 200 else None
+        return None
 
     def mark_read(self, message_id):
         self._req("PATCH", f"/messages/{message_id}", json={"isRead": True})
@@ -161,8 +223,27 @@ class DemoGraph:
     def attachment_names(self, message_id):
         return []
 
+    def sent_attachment(self, conversation_id, filename):
+        """Fetch a PDF we sent on a thread back out of Sent Items. Returns bytes or None."""
+        data = self._req("GET", "/mailFolders/sentitems/messages", params={
+            "$filter": f"conversationId eq '{conversation_id}'", "$select": "id,sentDateTime,hasAttachments",
+            "$top": "25"})
+        msgs = sorted((m for m in data.get("value", []) if m.get("hasAttachments")),
+                      key=lambda m: m.get("sentDateTime", ""), reverse=True)
+        for m in msgs:
+            listing = self._req("GET", f"/messages/{m['id']}/attachments", params={"$select": "id,name,size"})
+            att = next((a for a in listing.get("value", []) if a.get("name") == filename), None)
+            if att:
+                r = requests.get(f"{GRAPH}/users/{self.mailbox}/messages/{m['id']}/attachments/{att['id']}/$value",
+                                 headers={"Authorization": f"Bearer {self._get_token()}"}, timeout=120)
+                return r.content if r.status_code == 200 else None
+        return None
+
     def mark_read(self, message_id):
         pass
+
+    def sent_attachment(self, conversation_id, filename):
+        return None
 
     def latest_in_conversation(self, conversation_id):
         return f"{conversation_id}-latest"

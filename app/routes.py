@@ -233,6 +233,44 @@ def doc_upload(po_id):
     return _back("main.documents")
 
 
+@bp.route("/documents/<int:po_id>/file")
+def doc_file(po_id):
+    import os
+    from flask import abort, send_file
+    po = db.one("SELECT doc_path, po_number FROM pos WHERE id = ?", (po_id,))
+    if not po or not po["doc_path"] or not os.path.exists(po["doc_path"]):
+        abort(404)
+    return send_file(po["doc_path"], mimetype="application/pdf",
+                     download_name=f"PO{display_po(po['po_number'])}_BOL_Bioterrorism.pdf")
+
+
+@bp.post("/documents/<int:po_id>/check")
+def doc_check(po_id):
+    import hashlib
+    import os
+    po = db.one("SELECT * FROM pos WHERE id = ?", (po_id,))
+    name = f"PO{display_po(po['po_number'])}_BOL_Bioterrorism.pdf"
+    if not po["doc_path"] or not os.path.exists(po["doc_path"]):
+        flash("The original upload isn't on file for this PO, so there's nothing to compare against.", "error")
+        return _back("main.documents")
+    original = open(po["doc_path"], "rb").read()
+    try:
+        sent = jobs.Services.graph.sent_attachment(po["conversation_id"], name)
+    except Exception as e:
+        flash(f"Couldn't read Sent Items: {e}", "error")
+        return _back("main.documents")
+    if sent is None:
+        flash(f"Couldn't find {name} in Sent Items for this PO's thread.", "error")
+    elif hashlib.sha256(sent).digest() == hashlib.sha256(original).digest():
+        flash(f"The copy in Sent Items is identical to your upload ({len(sent):,} bytes). "
+              "The file is fine; the download error is coming from Outlook on the web.", "ok")
+    else:
+        flash(f"The copy in Sent Items is different from your upload ({len(sent):,} vs {len(original):,} bytes). "
+              "The attachment was damaged. Use Send again.", "error")
+    db.log(po_id, "Checked sent attachment", None, ACTOR)
+    return _back("main.documents")
+
+
 @bp.post("/documents/bulk")
 def doc_bulk():
     from .parser import find_po_numbers

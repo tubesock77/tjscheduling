@@ -391,6 +391,12 @@ def send_document(po_id, filename, data, actor="Cody"):
     path = os.path.join(Config.UPLOAD_DIR, f"{po['po_number']}_{int(now().timestamp())}.pdf")
     with open(path, "wb") as f:
         f.write(data)
+    db.update_po(po_id, doc_path=path)
+    if not data.startswith(b"%PDF"):
+        db.update_po(po_id, doc_status="failed", doc_filename=filename,
+                     doc_error="That file isn't a readable PDF. Open it on your computer to check, then upload again.")
+        db.log(po_id, "Document not sent", "File isn't a valid PDF", actor)
+        return False
     reply_to = _thread_message(po)
     if not reply_to:
         db.update_po(po_id, doc_status="failed", doc_filename=filename,
@@ -404,7 +410,8 @@ def send_document(po_id, filename, data, actor="Cody"):
         db.log(po_id, "Document not sent", str(e)[:300], actor)
         return False
     db.update_po(po_id, doc_status="sent", doc_filename=filename, doc_sent_at=db.stamp(), doc_error=None)
-    db.log(po_id, "Document sent", f"{filename} replied on the appointment thread", actor)
+    db.log(po_id, "Document sent", f"{filename} ({len(data):,} bytes, checked against Outlook's copy) "
+           "replied on the appointment thread", actor)
     return True
 
 

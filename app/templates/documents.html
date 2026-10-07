@@ -28,7 +28,7 @@
     <td>{% if p.doc_status == 'missing' and (p.act_ship or p.state == 'shipped') %}<span class="pill missing">Missing</span><div class="small">Shipped, send now</div>
         {% elif p.doc_status == 'missing' %}<span class="pill pending">Not shipped yet</span>
         {% elif p.doc_status == 'failed' %}<span class="pill failed">Not sent</span><div class="err">{{ p.doc_error }}</div>
-        {% elif p.doc_status == 'sent' %}<span class="pill sent">Sent</span><div class="small">{{ p.doc_sent_at|stamp }}</div>
+        {% elif p.doc_status == 'sent' %}<span class="pill sent">Sent</span><div class="small">{{ p.doc_sent_at|stamp }}{% if p.doc_path %} &nbsp;<a href="{{ url_for('main.doc_file', po_id=p.id) }}" target="_blank">Open PDF</a>{% endif %}</div>
         {% elif p.doc_status == 'sent_detected' %}<span class="pill sent_detected">Sent from mailbox</span><div class="small">{{ p.doc_sent_at|stamp }}</div>
         {% else %}<span class="pill sent_manual">Sent outside site</span><div class="small">{{ p.doc_sent_at|stamp }}</div>{% endif %}</td>
     <td><div class="docacts">
@@ -40,6 +40,14 @@
       <form class="inline" method="post" action="{{ url_for('main.doc_manual', po_id=p.id) }}">
         <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ request.full_path }}">
         <button class="ghost">Sent outside site</button></form>
+      {% elif p.doc_status == 'sent' %}
+      <form class="inline" method="post" action="{{ url_for('main.doc_check', po_id=p.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+        <button class="ghost">Check attachment</button></form>
+      <form class="inline" method="post" action="{{ url_for('main.doc_upload', po_id=p.id) }}" enctype="multipart/form-data">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ request.full_path }}">
+        <label class="btn quiet filepick">Send again<input type="file" name="pdf" accept="application/pdf" required onchange="this.closest('form').requestSubmit()"></label>
+      </form>
       {% elif p.doc_status == 'sent_manual' %}
       <form class="inline" method="post" action="{{ url_for('main.doc_manual', po_id=p.id) }}">
         <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="undo" value="1"><input type="hidden" name="next" value="{{ request.full_path }}">

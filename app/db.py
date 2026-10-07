@@ -91,7 +91,7 @@ def conn():
     return c
 
 
-NEW_COLUMNS = {"reschedule_override": "TEXT", "auto_send_at": "TEXT", "product": "TEXT"}
+NEW_COLUMNS = {"reschedule_override": "TEXT", "auto_send_at": "TEXT", "product": "TEXT", "doc_path": "TEXT"}
 
 
 def init():
