@@ -56,6 +56,7 @@ DEFAULT_SETTINGS = {
     "review_reschedules": "1",         # 1 = reschedules wait for Cody's OK
     "daily_auto_limit": "10",          # more automatic emails than this in a day pauses the site
     "queue_horizon_hours": "72",       # how far ahead the upcoming list looks
+    "docs_window_days": "2",           # Documents page: "Shipping soon" covers this many days ahead
     "reminder_hour": "8",              # daily reminder email hour (site time)
     "vendor": "SWEET CANDY",
     "carrier": "BROCK",

@@ -207,18 +207,44 @@ def sync_now():
 # ------------------------------------------------------------ Documents
 @bp.route("/documents")
 def documents():
-    show = request.args.get("show", "missing")
-    rows = [view(p) for p in db.q(
-        "SELECT * FROM pos WHERE conversation_id IS NOT NULL OR state = 'shipped' "
-        "ORDER BY CASE WHEN doc_status IN ('missing','failed') THEN 0 ELSE 1 END, "
-        "act_ship IS NULL, act_ship, appt_date")]
-    counts = {"missing": sum(r["doc_status"] in ("missing", "failed") for r in rows), "all": len(rows)}
-    counts["done"] = counts["all"] - counts["missing"]
-    if show == "missing":
-        rows = [r for r in rows if r["doc_status"] in ("missing", "failed")]
-    elif show == "done":
-        rows = [r for r in rows if r["doc_status"] not in ("missing", "failed")]
-    return render_template("documents.html", rows=rows, show=show, counts=counts)
+    from datetime import timedelta
+    today = now().date()
+    window = int(db.settings().get("docs_window_days", "2"))
+    soon, later, done = [], [], []
+    for p in db.q("SELECT * FROM pos WHERE (conversation_id IS NOT NULL OR state = 'shipped') AND state != 'closed'"):
+        r = view(p)
+        shipped = bool(p["act_ship"]) or p["state"] == "shipped"
+        if p["act_ship"]:
+            ship_on, source = p["act_ship"], "Shipped"
+        elif p["appt_date"] and r["dc"]:
+            # Appointed: the truck has to leave transit days before the appointment.
+            ship_on = (date.fromisoformat(p["appt_date"]) - timedelta(days=r["dc"]["transit"])).isoformat()
+            source = f"Appt minus {r['dc']['transit']}-day transit"
+        elif p["ship_date"]:
+            ship_on, source = p["ship_date"], "Smartsheet ship date"
+        else:
+            ship_on, source = None, ""
+        r.update(ship_on=ship_on, ship_source=source, shipped=shipped)
+        if p["doc_status"] not in ("missing", "failed"):
+            done.append(r)
+        elif shipped or (ship_on and date.fromisoformat(ship_on[:10]) <= today + timedelta(days=window)):
+            soon.append(r)
+        else:
+            later.append(r)
+    key = lambda r: (r["ship_on"] or "9999", r["appt_date"] or "9999")
+    soon.sort(key=key)
+    later.sort(key=key)
+    done.sort(key=lambda r: r["doc_sent_at"] or "", reverse=True)
+    # Everything else, grouped by product: not-sent first (soonest ship), then sent (newest first).
+    groups = {}
+    for r in later + done:
+        groups.setdefault(r["product"] or "No product", []).append(r)
+    by_product = [{"product": k, "rows": v,
+                   "not_sent": sum(1 for r in v if r["doc_status"] in ("missing", "failed")),
+                   "sent": sum(1 for r in v if r["doc_status"] not in ("missing", "failed"))}
+                  for k, v in sorted(groups.items(), key=lambda kv: (kv[0] == "No product", kv[0]))]
+    return render_template("documents.html", soon=soon, later=later, done=done, by_product=by_product,
+                           window=window, today=today.isoformat())
 
 
 @bp.post("/documents/<int:po_id>/upload")
