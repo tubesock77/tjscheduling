@@ -14,7 +14,7 @@ def view(po):
     """Row -> dict with display helpers."""
     d = dict(po)
     d["dc"] = dc_lookup.resolve(po["dc_code"])
-    d["po_display"] = display_po(po["po_number"])
+    d["po_display"] = po["po_number"]  # site shows the full PO with its leading 0
     d["hours"] = rules.hours_until(po["appt_date"], po["appt_time"], now())
     return d
 
@@ -136,7 +136,7 @@ def po_request(po_id):
                      requested_time=f.get("requested_time") or db.settings()["request_default_time"])
     try:
         jobs.send_request(po_id, ACTOR)
-        flash(f"Request sent for PO {display_po(db.one('SELECT po_number FROM pos WHERE id=?', (po_id,))[0])}.", "ok")
+        flash(f"Request sent for PO {db.one('SELECT po_number FROM pos WHERE id=?', (po_id,))[0]}.", "ok")
     except Exception as e:
         flash(f"Request not sent: {e}", "error")
     return _back()
@@ -443,4 +443,4 @@ def settings():
 def activity():
     rows = db.q("SELECT a.*, p.po_number FROM activity a LEFT JOIN pos p ON p.id = a.po_id "
                 "ORDER BY a.id DESC LIMIT 300")
-    return render_template("activity.html", rows=rows, display_po=display_po)
+    return render_template("activity.html", rows=rows, display_po=lambda n: n or "")

@@ -6,7 +6,7 @@
 
 <form class="drop" method="post" action="{{ url_for('main.doc_bulk') }}" enctype="multipart/form-data">
   <input type="hidden" name="csrf" value="{{ csrf }}">
-  <div><b>Send several at once</b><span class="small">Each file name needs its PO number, for example 158142470.pdf</span></div>
+  <div><b>Send several at once</b><span class="small">Each file name needs its PO number, for example 0158142470.pdf</span></div>
   <div class="row"><label class="btn quiet filepick">Choose PDFs<input type="file" name="pdfs" accept="application/pdf" multiple required onchange="this.form.querySelector('.cnt').textContent = this.files.length + ' selected'"></label>
   <span class="small cnt"></span><button>Send all</button></div>
 </form>
